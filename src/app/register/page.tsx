@@ -149,7 +149,7 @@ function RegisterForm() {
             <p className="text-muted-foreground mt-2">
               {isFirstUser
                 ? "Set up your admin credentials to get started"
-                : "Fill in your details to join Timeline"
+                : "Fill in your details to join Timeline. Open registration is enabled."
               }
             </p>
           </div>
