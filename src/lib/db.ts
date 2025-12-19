@@ -9,14 +9,25 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient() {
   const connectionString = process.env.POSTGRES_PRISMA_URL
   
+  // During build, if env var is missing, create a client that will fail gracefully at runtime
+  // This allows the build to complete even if env vars aren't available
   if (!connectionString) {
-    // During build time, return a mock client that will fail at runtime
-    // This prevents build errors when env vars aren't available
-    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-      throw new Error('POSTGRES_PRISMA_URL is not defined. Please set it in your Vercel environment variables.')
+    // Check if we're in build mode
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
+                        process.env.VERCEL_ENV === undefined
+    
+    if (isBuildTime) {
+      // Return a proxy that throws a helpful error only when actually used
+      return new Proxy({} as PrismaClient, {
+        get() {
+          throw new Error(
+            'Database connection not available. POSTGRES_PRISMA_URL must be set in Vercel environment variables.'
+          )
+        }
+      })
     }
-    // For local development, throw immediately
-    throw new Error('POSTGRES_PRISMA_URL is not defined. Please check your .env file.')
+    
+    throw new Error('POSTGRES_PRISMA_URL is not defined. Please set it in your Vercel environment variables.')
   }
   
   const pool = new Pool({ connectionString })
