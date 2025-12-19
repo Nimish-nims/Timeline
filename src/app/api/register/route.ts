@@ -66,9 +66,15 @@ export async function POST(request: NextRequest) {
     console.error("Failed to register:", error)
     
     // Provide more detailed error message
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : "Failed to register"
+    let errorMessage = "Failed to register"
+    
+    if (error instanceof Error) {
+      if (error.message.includes('POSTGRES_PRISMA_URL')) {
+        errorMessage = "Database configuration error. Please contact support."
+      } else {
+        errorMessage = error.message
+      }
+    }
     
     return NextResponse.json(
       { error: errorMessage },

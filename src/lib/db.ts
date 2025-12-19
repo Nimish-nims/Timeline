@@ -17,51 +17,33 @@ function createPrismaClient(): PrismaClient {
   const connectionString = process.env.POSTGRES_PRISMA_URL
   
   if (!connectionString) {
-    // During build, return a mock that will fail at runtime with a clear error
-    // This prevents build errors
-    const mockClient = {
-      user: {
-        findUnique: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        findMany: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        create: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        count: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        update: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        delete: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        deleteMany: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-      },
-      post: {
-        findUnique: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        findMany: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        create: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        count: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        update: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        delete: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-      },
-      invitation: {
-        findUnique: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        findFirst: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        findMany: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        create: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        update: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-      },
-      passwordReset: {
-        findUnique: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        findFirst: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        create: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        update: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-        deleteMany: () => { throw new Error('POSTGRES_PRISMA_URL not set') },
-      },
-    } as unknown as PrismaClient
+    // Check if we're in build phase
+    const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build'
     
-    _prismaClient = mockClient
-    return mockClient
+    if (isBuildPhase) {
+      // During build, return a mock that won't be used
+      // This prevents build errors
+      return {} as PrismaClient
+    }
+    
+    // At runtime, throw a clear error
+    throw new Error(
+      'POSTGRES_PRISMA_URL is not defined. Please set it in your Vercel environment variables. ' +
+      'Go to: Settings → Environment Variables → Add POSTGRES_PRISMA_URL'
+    )
   }
   
-  const pool = new Pool({ connectionString })
-  const adapter = new PrismaPg(pool)
-  _prismaClient = new PrismaClient({ adapter })
-  
-  return _prismaClient
+  try {
+    const pool = new Pool({ connectionString })
+    const adapter = new PrismaPg(pool)
+    _prismaClient = new PrismaClient({ adapter })
+    return _prismaClient
+  } catch (error) {
+    console.error('Failed to create Prisma client:', error)
+    throw new Error(
+      `Failed to connect to database. Please check your POSTGRES_PRISMA_URL environment variable. Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+  }
 }
 
 // Use Proxy to make it truly lazy - only initialize on first property access
