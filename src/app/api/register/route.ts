@@ -4,11 +4,19 @@ import { prisma } from "@/lib/db"
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, token } = await request.json()
+    const { name, email, password } = await request.json()
 
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: "Name, email, and password are required" },
+        { status: 400 }
+      )
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "Password must be at least 6 characters" },
         { status: 400 }
       )
     }
@@ -25,61 +33,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let isFirstUser = false
-    let role = "member"
-
     // Check if this is the first user (they become admin)
     const userCount = await prisma.user.count()
-    if (userCount === 0) {
-      isFirstUser = true
-      role = "admin"
-    } else {
-      // Not first user - require valid invitation
-      if (!token) {
-        return NextResponse.json(
-          { error: "Invitation token is required" },
-          { status: 400 }
-        )
-      }
-
-      const invitation = await prisma.invitation.findUnique({
-        where: { token }
-      })
-
-      if (!invitation) {
-        return NextResponse.json(
-          { error: "Invalid invitation token" },
-          { status: 400 }
-        )
-      }
-
-      if (invitation.used) {
-        return NextResponse.json(
-          { error: "Invitation has already been used" },
-          { status: 400 }
-        )
-      }
-
-      if (invitation.expiresAt < new Date()) {
-        return NextResponse.json(
-          { error: "Invitation has expired" },
-          { status: 400 }
-        )
-      }
-
-      if (invitation.email !== email) {
-        return NextResponse.json(
-          { error: "Email does not match invitation" },
-          { status: 400 }
-        )
-      }
-
-      // Mark invitation as used
-      await prisma.invitation.update({
-        where: { id: invitation.id },
-        data: { used: true }
-      })
-    }
+    const isFirstUser = userCount === 0
+    const role = isFirstUser ? "admin" : "member"
 
     // Hash password
     const hashedPassword = await hash(password, 12)

@@ -1,17 +1,15 @@
 "use client"
 
 import { Suspense, useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, UserPlus, AlertCircle, Shield, Mail, Lock, User, ArrowRight, ArrowLeft } from "lucide-react"
+import { Loader2, AlertCircle, Shield, Mail, Lock, User, ArrowRight } from "lucide-react"
 
 function RegisterForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const inviteToken = searchParams.get("token")
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -61,7 +59,6 @@ function RegisterForm() {
           name,
           email,
           password,
-          token: inviteToken,
         }),
       })
 
@@ -84,34 +81,6 @@ function RegisterForm() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (!isFirstUser && !inviteToken) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-8">
-        <div className="w-full max-w-md space-y-8 text-center">
-          <div className="flex justify-center">
-            <div className="h-20 w-20 rounded-2xl bg-muted flex items-center justify-center">
-              <UserPlus className="h-10 w-10 text-muted-foreground" />
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Invitation Required</h2>
-            <p className="text-muted-foreground mt-3 text-lg">
-              You need an invitation link to join Timeline. Please ask an admin to invite you.
-            </p>
-          </div>
-
-          <Link href="/login">
-            <Button variant="outline" className="h-12 px-8 text-base">
-              <ArrowLeft className="mr-2 h-5 w-5" />
-              Back to Login
-            </Button>
-          </Link>
-        </div>
       </div>
     )
   }
