@@ -8,13 +8,23 @@ const globalForPrisma = globalThis as unknown as {
 
 let _prismaClient: PrismaClient | null = null
 
+function getConnectionString(): string | undefined {
+  // Check multiple possible environment variable names
+  return (
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL_NON_POOLING
+  )
+}
+
 function createPrismaClient(): PrismaClient {
   // Return cached client if exists
   if (_prismaClient) {
     return _prismaClient
   }
 
-  const connectionString = process.env.POSTGRES_PRISMA_URL
+  const connectionString = getConnectionString()
   
   if (!connectionString) {
     // Check if we're in build phase
@@ -26,10 +36,15 @@ function createPrismaClient(): PrismaClient {
       return {} as PrismaClient
     }
     
-    // At runtime, throw a clear error
+    // At runtime, log available env vars for debugging (without exposing values)
+    const availableEnvVars = Object.keys(process.env)
+      .filter(key => key.includes('POSTGRES') || key.includes('DATABASE'))
+      .join(', ')
+    
+    console.error('Database connection string not found. Available env vars:', availableEnvVars)
+    
     throw new Error(
-      'POSTGRES_PRISMA_URL is not defined. Please set it in your Vercel environment variables. ' +
-      'Go to: Settings → Environment Variables → Add POSTGRES_PRISMA_URL'
+      'Database connection string not found. Please set POSTGRES_PRISMA_URL, POSTGRES_URL, or DATABASE_URL in Vercel environment variables.'
     )
   }
   
@@ -41,7 +56,7 @@ function createPrismaClient(): PrismaClient {
   } catch (error) {
     console.error('Failed to create Prisma client:', error)
     throw new Error(
-      `Failed to connect to database. Please check your POSTGRES_PRISMA_URL environment variable. Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to connect to database. Please check your database connection string. Error: ${error instanceof Error ? error.message : 'Unknown error'}`
     )
   }
 }
