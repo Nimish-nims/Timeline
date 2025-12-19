@@ -62,7 +62,16 @@ function RegisterForm() {
         }),
       })
 
-      const data = await res.json()
+      let data
+      try {
+        data = await res.json()
+      } catch (jsonError) {
+        // If response is not JSON, get text instead
+        const text = await res.text()
+        console.error("Non-JSON response:", text)
+        setError("Server error. Please try again later.")
+        return
+      }
 
       if (!res.ok) {
         setError(data.error || "Registration failed")
@@ -70,8 +79,9 @@ function RegisterForm() {
       }
 
       router.push("/login?registered=true")
-    } catch {
-      setError("Something went wrong")
+    } catch (error) {
+      console.error("Registration error:", error)
+      setError("Something went wrong. Please check your connection and try again.")
     } finally {
       setLoading(false)
     }
