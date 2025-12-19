@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { PostEditor } from '@/components/post-editor'
 import { Timeline } from '@/components/timeline'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, UserPlus, Loader2, Shield } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { LogOut, UserPlus, Loader2, Shield, Users, Camera, X } from 'lucide-react'
 
 interface Post {
   id: string
@@ -25,14 +32,27 @@ interface Post {
     id: string
     name: string
     email: string
+    image?: string | null
   }
 }
 
+interface Member {
+  id: string
+  name: string
+  image: string | null
+}
+
 export default function Home() {
-  const { data: session, status } = useSession()
+  const { data: session, status, update: updateSession } = useSession()
   const router = useRouter()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [memberCount, setMemberCount] = useState(0)
+  const [recentMembers, setRecentMembers] = useState<Member[]>([])
+  const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [showProfileDialog, setShowProfileDialog] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -43,6 +63,8 @@ export default function Home() {
   useEffect(() => {
     if (session) {
       fetchPosts()
+      fetchMembers()
+      fetchProfile()
     }
   }, [session])
 
@@ -56,6 +78,97 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchMembers = async () => {
+    try {
+      const res = await fetch('/api/members')
+      const data = await res.json()
+      setMemberCount(data.count)
+      setRecentMembers(data.members)
+    } catch (error) {
+      console.error('Failed to fetch members:', error)
+    }
+  }
+
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch('/api/profile')
+      const data = await res.json()
+      setProfileImage(data.image)
+    } catch (error) {
+      console.error('Failed to fetch profile:', error)
+    }
+  }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    // Validate file size (500KB max)
+    if (file.size > 500000) {
+      alert('Image too large. Please use an image under 500KB.')
+      return
+    }
+
+    setUploadingPhoto(true)
+
+    try {
+      // Convert to base64
+      const reader = new FileReader()
+      reader.onloadend = async () => {
+        const base64 = reader.result as string
+
+        const res = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64 }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          setProfileImage(data.image)
+          await updateSession() // Refresh session
+          fetchMembers() // Refresh member list
+        } else {
+          const error = await res.json()
+          alert(error.error || 'Failed to upload photo')
+        }
+        setUploadingPhoto(false)
+        setShowProfileDialog(false)
+      }
+      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error('Failed to upload photo:', error)
+      setUploadingPhoto(false)
+    }
+  }
+
+  const handleRemovePhoto = async () => {
+    setUploadingPhoto(true)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: null }),
+      })
+
+      if (res.ok) {
+        setProfileImage(null)
+        await updateSession()
+        fetchMembers()
+      }
+    } catch (error) {
+      console.error('Failed to remove photo:', error)
+    }
+    setUploadingPhoto(false)
+    setShowProfileDialog(false)
   }
 
   const handlePost = async (content: string) => {
@@ -136,6 +249,29 @@ export default function Home() {
             <div className="hidden sm:block">
               <span className="text-xl font-bold tracking-tight">Timeline</span>
             </div>
+            {/* Member count badge */}
+            <div className="flex items-center gap-2 ml-4 px-3 py-1.5 bg-muted rounded-full">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
+              {/* Stacked avatars */}
+              <div className="flex -space-x-2 ml-1">
+                {recentMembers.slice(0, 3).map((member, i) => (
+                  <Avatar key={member.id} className="h-6 w-6 border-2 border-background">
+                    {member.image ? (
+                      <AvatarImage src={member.image} alt={member.name} />
+                    ) : null}
+                    <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                      {getInitials(member.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+                {memberCount > 3 && (
+                  <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                    <span className="text-[10px] font-medium text-muted-foreground">+{memberCount - 3}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -145,6 +281,9 @@ export default function Home() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-2 ring-border hover:ring-primary/20 transition-all">
                   <Avatar className="h-10 w-10">
+                    {profileImage ? (
+                      <AvatarImage src={profileImage} alt={session?.user?.name || 'User'} />
+                    ) : null}
                     <AvatarFallback className="text-sm font-semibold bg-primary text-primary-foreground">
                       {getInitials(session?.user?.name || 'U')}
                     </AvatarFallback>
@@ -153,11 +292,22 @@ export default function Home() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
                 <div className="flex items-center gap-3 p-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="text-sm font-semibold bg-primary text-primary-foreground">
-                      {getInitials(session?.user?.name || 'U')}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative group">
+                    <Avatar className="h-12 w-12">
+                      {profileImage ? (
+                        <AvatarImage src={profileImage} alt={session?.user?.name || 'User'} />
+                      ) : null}
+                      <AvatarFallback className="text-sm font-semibold bg-primary text-primary-foreground">
+                        {getInitials(session?.user?.name || 'U')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <button
+                      onClick={() => setShowProfileDialog(true)}
+                      className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Camera className="h-4 w-4 text-white" />
+                    </button>
+                  </div>
                   <div className="flex flex-col space-y-0.5 leading-none min-w-0">
                     <p className="font-semibold text-sm truncate">{session?.user?.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{session?.user?.email}</p>
@@ -170,15 +320,19 @@ export default function Home() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowProfileDialog(true)} className="cursor-pointer">
+                  <Camera className="mr-2 h-4 w-4" />
+                  Update Photo
+                </DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuItem onClick={() => router.push('/invite')} className="cursor-pointer">
                       <UserPlus className="mr-2 h-4 w-4" />
                       Invite Users
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                   </>
                 )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => signOut({ callbackUrl: '/login' })}
                   className="cursor-pointer text-destructive focus:text-destructive"
@@ -232,6 +386,68 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Profile Photo Dialog */}
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Profile Photo</DialogTitle>
+            <DialogDescription>
+              Upload a new photo or remove your current one.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-6 py-4">
+            <div className="relative">
+              <Avatar className="h-32 w-32">
+                {profileImage ? (
+                  <AvatarImage src={profileImage} alt={session?.user?.name || 'User'} />
+                ) : null}
+                <AvatarFallback className="text-3xl font-semibold bg-primary text-primary-foreground">
+                  {getInitials(session?.user?.name || 'U')}
+                </AvatarFallback>
+              </Avatar>
+              {profileImage && (
+                <button
+                  onClick={handleRemovePhoto}
+                  disabled={uploadingPhoto}
+                  className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div className="flex flex-col gap-3 w-full">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="w-full"
+              >
+                {uploadingPhoto ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="mr-2 h-4 w-4" />
+                    Choose Photo
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Supported formats: JPG, PNG, GIF. Max size: 500KB
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
