@@ -23,7 +23,7 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "ct-rich-text-editor": "^1.3.29",
+    "ct-rich-text-editor": "^1.3.28",
     "dotenv": "^17.2.3",
     "lucide-react": "^0.562.0",
     "next": "16.1.0",
