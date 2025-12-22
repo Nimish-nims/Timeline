@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Trash2, Pencil, X, Check, Clock, Loader2, MessageSquare } from 'lucide-react'
 
@@ -21,6 +21,7 @@ interface Post {
   content: string
   authorName: string
   authorId: string
+  authorImage?: string | null
   createdAt: Date
 }
 
@@ -30,6 +31,10 @@ interface TimelineProps {
   onEdit: (id: string, content: string) => void
   currentUserId?: string
   isAdmin?: boolean
+  filterByUserId?: string | null
+  filterByUserName?: string | null
+  onFilterByUser?: (userId: string, userName: string) => void
+  onClearFilter?: () => void
 }
 
 function formatDate(date: Date): string {
@@ -70,9 +75,24 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function Timeline({ posts, onDelete, onEdit, currentUserId, isAdmin }: TimelineProps) {
+export function Timeline({
+  posts,
+  onDelete,
+  onEdit,
+  currentUserId,
+  isAdmin,
+  filterByUserId,
+  filterByUserName,
+  onFilterByUser,
+  onClearFilter
+}: TimelineProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+
+  // Filter posts if a user filter is active
+  const displayedPosts = filterByUserId
+    ? posts.filter(post => post.authorId === filterByUserId)
+    : posts
 
   const handleStartEdit = (post: Post) => {
     setEditingId(post.id)
@@ -110,18 +130,81 @@ export function Timeline({ posts, onDelete, onEdit, currentUserId, isAdmin }: Ti
     )
   }
 
+  if (displayedPosts.length === 0 && filterByUserId) {
+    return (
+      <div className="space-y-5">
+        {/* Filter indicator */}
+        <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl">
+          <span className="text-sm text-foreground">
+            Filtering by <span className="font-semibold">{filterByUserName}</span>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClearFilter}
+            className="h-7 px-2 ml-auto text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear filter
+          </Button>
+        </div>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+            <MessageSquare className="h-7 w-7 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">No posts from {filterByUserName}</h3>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            This user hasn&apos;t posted anything yet.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="relative">
+      {/* Filter indicator */}
+      {filterByUserId && filterByUserName && (
+        <div className="flex items-center gap-3 px-4 py-3 mb-5 bg-primary/5 border border-primary/20 rounded-xl">
+          <span className="text-sm text-foreground">
+            Filtering by <span className="font-semibold">{filterByUserName}</span>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClearFilter}
+            className="h-7 px-2 ml-auto text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear filter
+          </Button>
+        </div>
+      )}
       {/* Vertical timeline line */}
       <div className="absolute left-[23px] top-4 bottom-4 w-[2px] bg-gradient-to-b from-border via-border to-transparent rounded-full" />
 
       <div className="space-y-5">
-        {posts.map((post, index) => (
+        {displayedPosts.map((post, index) => (
           <div key={post.id} className="relative flex gap-5">
-            {/* Timeline node */}
+            {/* Timeline node - clickable to filter by user */}
             <div className="relative z-10 flex-shrink-0 mt-1">
-              <div className="w-12 h-12 rounded-full bg-background ring-2 ring-border flex items-center justify-center shadow-sm">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => onFilterByUser?.(post.authorId, post.authorName)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onFilterByUser?.(post.authorId, post.authorName)
+                  }
+                }}
+                className="w-12 h-12 rounded-full bg-background ring-2 ring-border flex items-center justify-center shadow-sm hover:ring-primary/50 hover:scale-105 transition-all duration-200 cursor-pointer"
+                title={`Filter by ${post.authorName}`}
+              >
                 <Avatar className="h-9 w-9">
+                  {post.authorImage && (
+                    <AvatarImage src={post.authorImage} alt={post.authorName} />
+                  )}
                   <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
                     {getInitials(post.authorName)}
                   </AvatarFallback>

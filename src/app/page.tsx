@@ -52,7 +52,19 @@ export default function Home() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [showProfileDialog, setShowProfileDialog] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [filterByUserId, setFilterByUserId] = useState<string | null>(null)
+  const [filterByUserName, setFilterByUserName] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFilterByUser = (userId: string, userName: string) => {
+    setFilterByUserId(userId)
+    setFilterByUserName(userName)
+  }
+
+  const handleClearFilter = () => {
+    setFilterByUserId(null)
+    setFilterByUserName(null)
+  }
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -361,12 +373,17 @@ export default function Home() {
               content: post.content,
               authorName: post.author.name,
               authorId: post.author.id,
+              authorImage: post.author.image,
               createdAt: new Date(post.createdAt),
             }))}
             onDelete={handleDelete}
             onEdit={handleEdit}
             currentUserId={session?.user?.id}
             isAdmin={isAdmin}
+            filterByUserId={filterByUserId}
+            filterByUserName={filterByUserName}
+            onFilterByUser={handleFilterByUser}
+            onClearFilter={handleClearFilter}
           />
         )}
       </main>
