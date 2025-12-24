@@ -24,7 +24,7 @@ export default function CTEditorWrapper({
   const apiKey = process.env.NEXT_PUBLIC_CT_EDITOR_API_KEY || ''
 
   return (
-    <div className="ct-editor-container min-h-[150px]">
+    <div className="ct-editor-container min-h-[150px]" suppressHydrationWarning>
       <EditorProvider
         defaultFontFamilies={defaultEditorConfig.defaultFontFamilies}
       >

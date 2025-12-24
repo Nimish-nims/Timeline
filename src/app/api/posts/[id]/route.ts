@@ -14,7 +14,7 @@ export async function PUT(
     }
 
     const { id } = await params
-    const { content } = await request.json()
+    const { title, content, tags } = await request.json()
 
     const post = await prisma.post.findUnique({
       where: { id }
@@ -29,16 +29,62 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    // Process tags if provided
+    const tagConnections = []
+    if (tags && Array.isArray(tags)) {
+      for (const tagName of tags) {
+        const normalizedName = tagName.trim().toLowerCase()
+        if (normalizedName) {
+          const tag = await prisma.tag.upsert({
+            where: { name: normalizedName },
+            update: {},
+            create: { name: normalizedName }
+          })
+          tagConnections.push({ id: tag.id })
+        }
+      }
+    }
+
     const updatedPost = await prisma.post.update({
       where: { id },
-      data: { content },
+      data: {
+        ...(title !== undefined && { title: title?.trim() || null }),
+        content,
+        ...(tags !== undefined && {
+          tags: {
+            set: tagConnections
+          }
+        })
+      },
       include: {
         author: {
           select: {
             id: true,
             name: true,
             email: true,
+            image: true,
           }
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        shares: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              }
+            }
+          }
+        },
+        _count: {
+          select: { comments: true }
         }
       }
     })

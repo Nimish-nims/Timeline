@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { PostEditor } from '@/components/post-editor'
 import { Timeline } from '@/components/timeline'
+import { SharedWithMe } from '@/components/shared-with-me'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -22,17 +23,46 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { LogOut, UserPlus, Loader2, Shield, Users, Camera, X } from 'lucide-react'
+import { LogOut, UserPlus, Loader2, Shield, Users, Camera, X, Share2, Copy, Check, Globe, Lock, Inbox, User, Tag, ChevronDown, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
+interface TagType {
+  id: string
+  name: string
+}
+
+interface TagWithCount {
+  id: string
+  name: string
+  _count: {
+    posts: number
+  }
+}
+
+interface SharedUser {
+  id: string
+  name: string
+  email: string
+  image?: string | null
+}
 
 interface Post {
   id: string
+  title?: string | null
   content: string
   createdAt: string
+  updatedAt: string
   author: {
     id: string
     name: string
     email: string
     image?: string | null
+  }
+  tags?: TagType[]
+  shares?: { user: SharedUser }[]
+  _count?: {
+    comments: number
   }
 }
 
@@ -54,7 +84,22 @@ export default function Home() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [filterByUserId, setFilterByUserId] = useState<string | null>(null)
   const [filterByUserName, setFilterByUserName] = useState<string | null>(null)
+  const [filterByTag, setFilterByTag] = useState<string | null>(null)
+  const [allTags, setAllTags] = useState<TagWithCount[]>([])
+  const [tagSearchQuery, setTagSearchQuery] = useState('')
+  const [showTagDropdown, setShowTagDropdown] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const tagDropdownRef = useRef<HTMLDivElement>(null)
+  
+  // Share state
+  const [showShareDialog, setShowShareDialog] = useState(false)
+  const [isPublic, setIsPublic] = useState(false)
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [copiedLink, setCopiedLink] = useState(false)
+  const [savingShare, setSavingShare] = useState(false)
+
+  // Tab state for switching between All Posts and Shared with Me
+  const [activeTab, setActiveTab] = useState<'all' | 'shared'>('all')
 
   const handleFilterByUser = (userId: string, userName: string) => {
     setFilterByUserId(userId)
@@ -64,6 +109,14 @@ export default function Home() {
   const handleClearFilter = () => {
     setFilterByUserId(null)
     setFilterByUserName(null)
+  }
+
+  const handleFilterByTag = (tag: string) => {
+    setFilterByTag(tag)
+  }
+
+  const handleClearTagFilter = () => {
+    setFilterByTag(null)
   }
 
   useEffect(() => {
@@ -77,16 +130,36 @@ export default function Home() {
       fetchPosts()
       fetchMembers()
       fetchProfile()
+      fetchShareSettings()
+      fetchTags()
     }
   }, [session])
+
+  // Close tag dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(event.target as Node)) {
+        setShowTagDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const fetchPosts = async () => {
     try {
       const res = await fetch('/api/posts')
       const data = await res.json()
-      setPosts(data)
+      // Ensure data is an array before setting posts
+      if (Array.isArray(data)) {
+        setPosts(data)
+      } else {
+        console.error('Posts API returned non-array:', data)
+        setPosts([])
+      }
     } catch (error) {
       console.error('Failed to fetch posts:', error)
+      setPosts([])
     } finally {
       setLoading(false)
     }
@@ -103,6 +176,18 @@ export default function Home() {
     }
   }
 
+  const fetchTags = async () => {
+    try {
+      const res = await fetch('/api/tags')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setAllTags(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch tags:', error)
+    }
+  }
+
   const fetchProfile = async () => {
     try {
       const res = await fetch('/api/profile')
@@ -110,6 +195,48 @@ export default function Home() {
       setProfileImage(data.image)
     } catch (error) {
       console.error('Failed to fetch profile:', error)
+    }
+  }
+
+  const fetchShareSettings = async () => {
+    try {
+      const res = await fetch('/api/share')
+      const data = await res.json()
+      setIsPublic(data.isPublic || false)
+      if (data.shareUrl) {
+        setShareUrl(`${window.location.origin}${data.shareUrl}`)
+      }
+    } catch (error) {
+      console.error('Failed to fetch share settings:', error)
+    }
+  }
+
+  const togglePublicShare = async () => {
+    setSavingShare(true)
+    try {
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublic: !isPublic }),
+      })
+      const data = await res.json()
+      setIsPublic(data.isPublic)
+      if (data.shareUrl) {
+        setShareUrl(`${window.location.origin}${data.shareUrl}`)
+      } else {
+        setShareUrl(null)
+      }
+    } catch (error) {
+      console.error('Failed to update share settings:', error)
+    }
+    setSavingShare(false)
+  }
+
+  const copyShareLink = async () => {
+    if (shareUrl) {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopiedLink(true)
+      setTimeout(() => setCopiedLink(false), 2000)
     }
   }
 
@@ -183,17 +310,21 @@ export default function Home() {
     setShowProfileDialog(false)
   }
 
-  const handlePost = async (content: string) => {
+  const handlePost = async (content: string, tags: string[], title?: string) => {
     try {
       const res = await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ title, content, tags }),
       })
 
       if (res.ok) {
         const newPost = await res.json()
         setPosts([newPost, ...posts])
+        // Refresh tags to include any new ones
+        if (tags.length > 0) {
+          fetchTags()
+        }
       }
     } catch (error) {
       console.error('Failed to create post:', error)
@@ -214,12 +345,12 @@ export default function Home() {
     }
   }
 
-  const handleEdit = async (id: string, content: string) => {
+  const handleEdit = async (id: string, content: string, tags?: string[]) => {
     try {
       const res = await fetch(`/api/posts/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, tags }),
       })
 
       if (res.ok) {
@@ -228,6 +359,38 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to update post:', error)
+    }
+  }
+
+  const handleSharePost = async (postId: string, userIds: string[]) => {
+    try {
+      const res = await fetch(`/api/posts/${postId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds }),
+      })
+
+      if (res.ok) {
+        // Refresh posts to get updated share info
+        fetchPosts()
+      }
+    } catch (error) {
+      console.error('Failed to share post:', error)
+    }
+  }
+
+  const handleUnsharePost = async (postId: string, userId: string) => {
+    try {
+      const res = await fetch(`/api/posts/${postId}/share?userId=${userId}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        // Refresh posts to get updated share info
+        fetchPosts()
+      }
+    } catch (error) {
+      console.error('Failed to unshare post:', error)
     }
   }
 
@@ -332,9 +495,18 @@ export default function Home() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push(`/profile/${session?.user?.id}`)} className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4" />
+                  View Profile
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowProfileDialog(true)} className="cursor-pointer">
                   <Camera className="mr-2 h-4 w-4" />
                   Update Photo
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowShareDialog(true)} className="cursor-pointer">
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share Timeline
+                  {isPublic && <Globe className="ml-auto h-3 w-3 text-green-500" />}
                 </DropdownMenuItem>
                 {isAdmin && (
                   <>
@@ -361,30 +533,153 @@ export default function Home() {
       <main className="container mx-auto max-w-6xl px-6 py-8">
         <PostEditor onPost={handlePost} />
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mt-3">Loading posts...</p>
+        {/* Tab Navigation */}
+        <div className="flex items-center justify-between gap-2 mb-6 border-b">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'all'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              All Posts
+            </button>
+            <button
+              onClick={() => setActiveTab('shared')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'shared'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              }`}
+            >
+              <Inbox className="h-4 w-4" />
+              Shared with Me
+            </button>
           </div>
+
+          {/* Tag Filter Dropdown */}
+          {activeTab === 'all' && allTags.length > 0 && (
+            <div className="relative" ref={tagDropdownRef}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTagDropdown(!showTagDropdown)}
+                className={`gap-2 ${filterByTag ? 'border-primary bg-primary/5' : ''}`}
+              >
+                <Tag className="h-4 w-4" />
+                {filterByTag || 'Filter by tag'}
+                <ChevronDown className={`h-3 w-3 transition-transform ${showTagDropdown ? 'rotate-180' : ''}`} />
+              </Button>
+
+              {showTagDropdown && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-popover border rounded-lg shadow-lg z-50">
+                  {/* Search input */}
+                  <div className="p-2 border-b">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search tags..."
+                        value={tagSearchQuery}
+                        onChange={(e) => setTagSearchQuery(e.target.value)}
+                        className="pl-8 h-9"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* Clear filter option */}
+                  {filterByTag && (
+                    <button
+                      onClick={() => {
+                        handleClearTagFilter()
+                        setShowTagDropdown(false)
+                        setTagSearchQuery('')
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent flex items-center gap-2 border-b"
+                    >
+                      <X className="h-4 w-4" />
+                      Clear filter
+                    </button>
+                  )}
+
+                  {/* Tags list */}
+                  <div className="max-h-64 overflow-y-auto py-1">
+                    {allTags
+                      .filter(tag => tag.name.toLowerCase().includes(tagSearchQuery.toLowerCase()))
+                      .map((tag) => (
+                        <button
+                          key={tag.id}
+                          onClick={() => {
+                            handleFilterByTag(tag.name)
+                            setShowTagDropdown(false)
+                            setTagSearchQuery('')
+                          }}
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between gap-2 ${
+                            filterByTag === tag.name ? 'bg-accent' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{tag.name}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {tag._count.posts}
+                          </span>
+                        </button>
+                      ))}
+                    {allTags.filter(tag => tag.name.toLowerCase().includes(tagSearchQuery.toLowerCase())).length === 0 && (
+                      <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                        No tags found
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {activeTab === 'all' ? (
+          loading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mt-3">Loading posts...</p>
+            </div>
+          ) : (
+            <Timeline
+              posts={posts.map(post => ({
+                id: post.id,
+                title: post.title,
+                content: post.content,
+                authorName: post.author.name,
+                authorId: post.author.id,
+                authorImage: post.author.image,
+                createdAt: new Date(post.createdAt),
+                updatedAt: new Date(post.updatedAt),
+                tags: post.tags,
+                shares: post.shares,
+                _count: post._count,
+              }))}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+              onSharePost={handleSharePost}
+              onUnsharePost={handleUnsharePost}
+              currentUserId={session?.user?.id}
+              isAdmin={isAdmin}
+              filterByUserId={filterByUserId}
+              filterByUserName={filterByUserName}
+              onFilterByUser={handleFilterByUser}
+              onClearFilter={handleClearFilter}
+              filterByTag={filterByTag}
+              onFilterByTag={handleFilterByTag}
+              onClearTagFilter={handleClearTagFilter}
+            />
+          )
         ) : (
-          <Timeline
-            posts={posts.map(post => ({
-              id: post.id,
-              content: post.content,
-              authorName: post.author.name,
-              authorId: post.author.id,
-              authorImage: post.author.image,
-              createdAt: new Date(post.createdAt),
-            }))}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
-            currentUserId={session?.user?.id}
-            isAdmin={isAdmin}
-            filterByUserId={filterByUserId}
-            filterByUserName={filterByUserName}
-            onFilterByUser={handleFilterByUser}
-            onClearFilter={handleClearFilter}
-          />
+          <SharedWithMe currentUserId={session?.user?.id} />
         )}
       </main>
 
@@ -462,6 +757,86 @@ export default function Home() {
                 Supported formats: JPG, PNG, GIF. Max size: 500KB
               </p>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Timeline Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5" />
+              Share Your Timeline
+            </DialogTitle>
+            <DialogDescription>
+              Make your timeline public so anyone with the link can view your posts.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {/* Toggle Public */}
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+              <div className="flex items-center gap-3">
+                {isPublic ? (
+                  <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <Globe className="h-5 w-5 text-green-500" />
+                  </div>
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                    <Lock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <p className="font-medium">{isPublic ? 'Public' : 'Private'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {isPublic ? 'Anyone with the link can view' : 'Only you can see your timeline'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant={isPublic ? "destructive" : "default"}
+                size="sm"
+                onClick={togglePublicShare}
+                disabled={savingShare}
+              >
+                {savingShare ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isPublic ? (
+                  'Make Private'
+                ) : (
+                  'Make Public'
+                )}
+              </Button>
+            </div>
+
+            {/* Share Link */}
+            {isPublic && shareUrl && (
+              <div className="space-y-2">
+                <Label>Share Link</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={shareUrl}
+                    readOnly
+                    className="text-sm"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={copyShareLink}
+                    className="shrink-0"
+                  >
+                    {copiedLink ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Share this link with anyone to let them view your timeline.
+                </p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -2,16 +2,48 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const tag = searchParams.get('tag')
+
     const posts = await prisma.post.findMany({
+      where: tag ? {
+        tags: {
+          some: {
+            name: tag.toLowerCase()
+          }
+        }
+      } : undefined,
       include: {
         author: {
           select: {
             id: true,
             name: true,
             email: true,
+            image: true,
           }
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        shares: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              }
+            }
+          }
+        },
+        _count: {
+          select: { comments: true }
         }
       },
       orderBy: {
@@ -34,16 +66,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { content } = await request.json()
+    const { title, content, tags } = await request.json()
 
     if (!content) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 })
     }
 
+    // Process tags - create if they don't exist
+    const tagConnections = []
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      for (const tagName of tags) {
+        const normalizedName = tagName.trim().toLowerCase()
+        if (normalizedName) {
+          // Upsert the tag
+          const tag = await prisma.tag.upsert({
+            where: { name: normalizedName },
+            update: {},
+            create: { name: normalizedName }
+          })
+          tagConnections.push({ id: tag.id })
+        }
+      }
+    }
+
     const post = await prisma.post.create({
       data: {
+        title: title?.trim() || null,
         content,
         authorId: session.user.id,
+        tags: {
+          connect: tagConnections
+        }
       },
       include: {
         author: {
@@ -51,7 +104,29 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true,
             email: true,
+            image: true,
           }
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        shares: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              }
+            }
+          }
+        },
+        _count: {
+          select: { comments: true }
         }
       }
     })
