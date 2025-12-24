@@ -54,7 +54,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(posts)
   } catch (error) {
     console.error("Failed to fetch posts:", error)
-    return NextResponse.json({ error: "Failed to fetch posts" }, { status: 500 })
+    // Return more detailed error in development
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ 
+      error: "Failed to fetch posts",
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    }, { status: 500 })
   }
 }
 
