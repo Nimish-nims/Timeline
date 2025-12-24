@@ -33,11 +33,19 @@ END $$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'User_publicSlug_key'
+    SELECT 1 FROM information_schema.table_constraints tc
+    JOIN information_schema.constraint_column_usage ccu 
+      ON tc.constraint_name = ccu.constraint_name
+    WHERE tc.table_name = 'User' 
+    AND tc.constraint_name = 'User_publicSlug_key'
+    AND tc.constraint_type = 'UNIQUE'
   ) THEN
     ALTER TABLE "User" ADD CONSTRAINT "User_publicSlug_key" UNIQUE ("publicSlug");
   END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Constraint might already exist, ignore error
+    NULL;
 END $$;
 
 -- ============================================
@@ -56,12 +64,15 @@ CREATE TABLE IF NOT EXISTS "Post" (
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'Post_authorId_fkey'
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'Post' 
+    AND constraint_name = 'Post_authorId_fkey'
   ) THEN
     ALTER TABLE "Post" ADD CONSTRAINT "Post_authorId_fkey" 
     FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
 END $$;
 
 -- ============================================
@@ -86,20 +97,24 @@ CREATE TABLE IF NOT EXISTS "_PostTags" (
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = '_PostTags_A_fkey'
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = '_PostTags' 
+    AND constraint_name = '_PostTags_A_fkey'
   ) THEN
     ALTER TABLE "_PostTags" ADD CONSTRAINT "_PostTags_A_fkey" 
     FOREIGN KEY ("A") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
   
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = '_PostTags_B_fkey'
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = '_PostTags' 
+    AND constraint_name = '_PostTags_B_fkey'
   ) THEN
     ALTER TABLE "_PostTags" ADD CONSTRAINT "_PostTags_B_fkey" 
     FOREIGN KEY ("B") REFERENCES "Tag"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
 END $$;
 
 -- Create indexes for junction table
@@ -121,20 +136,24 @@ CREATE TABLE IF NOT EXISTS "Comment" (
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'Comment_postId_fkey'
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'Comment' 
+    AND constraint_name = 'Comment_postId_fkey'
   ) THEN
     ALTER TABLE "Comment" ADD CONSTRAINT "Comment_postId_fkey" 
     FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
   
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'Comment_authorId_fkey'
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'Comment' 
+    AND constraint_name = 'Comment_authorId_fkey'
   ) THEN
     ALTER TABLE "Comment" ADD CONSTRAINT "Comment_authorId_fkey" 
     FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
 END $$;
 
 -- ============================================
@@ -152,20 +171,24 @@ CREATE TABLE IF NOT EXISTS "PostShare" (
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'PostShare_postId_fkey'
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'PostShare' 
+    AND constraint_name = 'PostShare_postId_fkey'
   ) THEN
     ALTER TABLE "PostShare" ADD CONSTRAINT "PostShare_postId_fkey" 
     FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
   
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'PostShare_userId_fkey'
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'PostShare' 
+    AND constraint_name = 'PostShare_userId_fkey'
   ) THEN
     ALTER TABLE "PostShare" ADD CONSTRAINT "PostShare_userId_fkey" 
     FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
 END $$;
 
 -- ============================================
@@ -185,12 +208,15 @@ CREATE TABLE IF NOT EXISTS "Invitation" (
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'Invitation_invitedById_fkey'
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'Invitation' 
+    AND constraint_name = 'Invitation_invitedById_fkey'
   ) THEN
     ALTER TABLE "Invitation" ADD CONSTRAINT "Invitation_invitedById_fkey" 
     FOREIGN KEY ("invitedById") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
 END $$;
 
 -- ============================================
