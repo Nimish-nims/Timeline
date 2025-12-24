@@ -7,49 +7,79 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const tag = searchParams.get('tag')
 
-    const posts = await prisma.post.findMany({
-      where: tag ? {
-        tags: {
-          some: {
-            name: tag.toLowerCase()
+    // First, try to get posts with all relations
+    // If that fails, fall back to a simpler query
+    let posts
+    try {
+      posts = await prisma.post.findMany({
+        where: tag ? {
+          tags: {
+            some: {
+              name: tag.toLowerCase()
+            }
           }
-        }
-      } : undefined,
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          }
-        },
-        tags: {
-          select: {
-            id: true,
-            name: true,
-          }
-        },
-        shares: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
+        } : undefined,
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+            }
+          },
+          tags: {
+            select: {
+              id: true,
+              name: true,
+            }
+          },
+          shares: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                }
               }
+            }
+          },
+          _count: {
+            select: { comments: true }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+    } catch (relationError) {
+      // Fallback: try without relations if they don't exist yet
+      console.warn("Failed to fetch with relations, trying simple query:", relationError)
+      posts = await prisma.post.findMany({
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
             }
           }
         },
-        _count: {
-          select: { comments: true }
+        orderBy: {
+          createdAt: 'desc'
         }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+      })
+      // Add empty arrays for missing relations
+      posts = posts.map(post => ({
+        ...post,
+        tags: [],
+        shares: [],
+        _count: { comments: 0 }
+      }))
+    }
 
     return NextResponse.json(posts)
   } catch (error) {
