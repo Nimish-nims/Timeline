@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 
-const CTEditorWrapper = dynamic(() => import('@/components/ct-editor-wrapper'), {
+const EddyterWrapper = dynamic(() => import('@/components/eddyter-wrapper'), {
   ssr: false,
   loading: () => (
     <div className="h-[100px] border rounded-lg flex items-center justify-center text-muted-foreground bg-muted/30">
@@ -399,7 +399,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
               <CardContent className="px-6 pb-6">
                 {isEditing ? (
                   <div className="space-y-4">
-                    <CTEditorWrapper
+                    <EddyterWrapper
                       onChange={setEditContent}
                       initialContent={post.content}
                     />
@@ -555,7 +555,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                     <span className="text-sm font-medium text-foreground">Add a comment</span>
                   </div>
                   <div className="rounded-lg border bg-muted/30 overflow-hidden">
-                    <CTEditorWrapper
+                    <EddyterWrapper
                       onChange={setCommentInput}
                       placeholder="Write a comment..."
                       initialContent=""

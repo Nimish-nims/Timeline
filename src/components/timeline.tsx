@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 
-const CTEditorWrapper = dynamic(() => import('./ct-editor-wrapper'), {
+const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
   ssr: false,
   loading: () => (
     <div className="h-[120px] border rounded-lg flex items-center justify-center text-muted-foreground bg-muted/30">
@@ -663,7 +663,7 @@ export function Timeline({
                 <CardContent className="px-5 pb-4 pt-2">
                   {editingId === post.id ? (
                     <div className="space-y-4">
-                      <CTEditorWrapper
+                      <EddyterWrapper
                         onChange={setEditContent}
                         initialContent={post.content}
                       />
@@ -952,7 +952,7 @@ export function Timeline({
                               <span className="text-sm font-medium text-foreground">Add a comment</span>
                             </div>
                             <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
-                              <CTEditorWrapper
+                              <EddyterWrapper
                                 onChange={(html) => setCommentInputs(prev => ({ ...prev, [post.id]: html }))}
                                 placeholder="Write a comment..."
                                 initialContent=""

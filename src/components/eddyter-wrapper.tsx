@@ -5,26 +5,26 @@ import {
   ConfigurableEditorWithAuth,
   EditorProvider,
   defaultEditorConfig
-} from 'ct-rich-text-editor'
-import 'ct-rich-text-editor/style.css'
+} from 'eddyter'
+import 'eddyter/style.css'
 
-interface CTEditorWrapperProps {
+interface EddyterWrapperProps {
   onChange: (html: string) => void
   placeholder?: string
   initialContent?: string
 }
 
-export default function CTEditorWrapper({
+export default function EddyterWrapper({
   onChange,
   placeholder = "Start typing...",
   initialContent = ""
-}: CTEditorWrapperProps) {
-  // You can get an API key from https://www.cteditor.com/user/license-key
+}: EddyterWrapperProps) {
+  // You can get an API key from the Eddyter dashboard
   // For demo purposes, using empty string works but limits features
-  const apiKey = process.env.NEXT_PUBLIC_CT_EDITOR_API_KEY || ''
+  const apiKey = process.env.NEXT_PUBLIC_EDDYTER_API_KEY || ''
 
   return (
-    <div className="ct-editor-container min-h-[150px]" suppressHydrationWarning>
+    <div className="eddyter-container min-h-[150px]" suppressHydrationWarning>
       <EditorProvider
         defaultFontFamilies={defaultEditorConfig.defaultFontFamilies}
       >
@@ -37,3 +37,5 @@ export default function CTEditorWrapper({
     </div>
   )
 }
+
+
