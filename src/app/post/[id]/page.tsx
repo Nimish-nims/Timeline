@@ -494,57 +494,93 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
               </CardHeader>
 
               <CardContent className="px-6 pb-6">
-                {/* Comments List */}
+                {/* Comments List - Vertical Timeline Style */}
                 {post.comments && post.comments.length > 0 ? (
-                  <div className="space-y-4 mb-6">
-                    {post.comments.map((comment) => (
-                      <div
-                        key={comment.id}
-                        className="flex gap-3 p-4 rounded-lg bg-muted/30 border group"
-                      >
-                        <Avatar className="h-10 w-10 flex-shrink-0">
-                          {comment.author.image && (
-                            <AvatarImage src={comment.author.image} alt={comment.author.name} />
-                          )}
-                          <AvatarFallback className="text-sm font-medium bg-secondary text-secondary-foreground">
-                            {getInitials(comment.author.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-foreground">
-                                  {comment.author.name}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatRelativeDate(new Date(comment.createdAt))}
-                                </span>
-                              </div>
-                              <div
-                                className="prose prose-sm dark:prose-invert max-w-none mt-2"
-                                dangerouslySetInnerHTML={{ __html: comment.content }}
-                              />
+                  <div className="relative mb-6">
+                    {/* Timeline Line */}
+                    <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/50 via-primary/30 to-transparent" />
+
+                    <div className="space-y-0">
+                      {post.comments.map((comment, index) => (
+                        <div
+                          key={comment.id}
+                          className="relative pl-14 pb-6 group"
+                        >
+                          {/* Timeline Node */}
+                          <div className="absolute left-0 top-0 flex items-center justify-center">
+                            <div className="relative">
+                              {/* Outer ring with pulse animation for latest comment */}
+                              <div className={`absolute inset-0 rounded-full ${
+                                index === post.comments!.length - 1
+                                  ? 'bg-primary/20 animate-ping'
+                                  : ''
+                              }`} />
+                              {/* Avatar as timeline node */}
+                              <Avatar className="h-10 w-10 border-2 border-background shadow-md ring-2 ring-primary/20 relative z-10">
+                                {comment.author.image && (
+                                  <AvatarImage src={comment.author.image} alt={comment.author.name} />
+                                )}
+                                <AvatarFallback className="text-sm font-medium bg-primary text-primary-foreground">
+                                  {getInitials(comment.author.name)}
+                                </AvatarFallback>
+                              </Avatar>
                             </div>
-                            {canDeleteComment(comment) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDeleteComment(comment.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
                           </div>
+
+                          {/* Comment Content Card */}
+                          <div className="relative">
+                            {/* Arrow pointing to timeline */}
+                            <div className="absolute -left-2 top-4 w-2 h-2 rotate-45 bg-muted/50 border-l border-b border-border" />
+
+                            <div className="p-4 rounded-lg bg-muted/30 border transition-all hover:bg-muted/50 hover:shadow-sm">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  {/* Header with author and timestamp */}
+                                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                                    <span className="font-semibold text-foreground">
+                                      {comment.author.name}
+                                    </span>
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                      {formatRelativeDate(new Date(comment.createdAt))}
+                                    </span>
+                                  </div>
+                                  {/* Comment content */}
+                                  <div
+                                    className="prose prose-sm dark:prose-invert max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: comment.content }}
+                                  />
+                                </div>
+                                {canDeleteComment(comment) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Connector line segment */}
+                          {index < post.comments!.length - 1 && (
+                            <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-border" />
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center mb-6">
-                    <MessageSquare className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-muted-foreground">No comments yet. Be the first to comment!</p>
+                    <div className="relative">
+                      <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                        <MessageSquare className="h-8 w-8 text-muted-foreground/40" />
+                      </div>
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-gradient-to-b from-muted-foreground/20 to-transparent" />
+                    </div>
+                    <p className="text-muted-foreground mt-4">No comments yet. Be the first to comment!</p>
                   </div>
                 )}
 

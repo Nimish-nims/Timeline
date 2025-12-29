@@ -886,61 +886,97 @@ export function Timeline({
                           </div>
                         )}
 
-                        {/* Comments List */}
+                        {/* Comments List - Vertical Timeline Style */}
                         {!loadingComments[post.id] && comments[post.id]?.length > 0 && (
-                          <div className="space-y-3 mb-4">
-                            {comments[post.id].map((comment) => (
-                              <div
-                                key={comment.id}
-                                className="flex gap-3 p-3 rounded-lg bg-background border group/comment"
-                              >
-                                <Avatar className="h-8 w-8 flex-shrink-0">
-                                  {comment.author.image && (
-                                    <AvatarImage src={comment.author.image} alt={comment.author.name} />
-                                  )}
-                                  <AvatarFallback className="text-xs font-medium bg-secondary text-secondary-foreground">
-                                    {getInitials(comment.author.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="font-medium text-sm text-foreground">
-                                          {comment.author.name}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
-                                          {formatDate(new Date(comment.createdAt))}
-                                        </span>
-                                      </div>
-                                      <div
-                                        className="prose prose-sm dark:prose-invert max-w-none mt-1 [&>p]:mb-1 [&>p:last-child]:mb-0"
-                                        dangerouslySetInnerHTML={{ __html: comment.content }}
-                                      />
+                          <div className="relative mb-4">
+                            {/* Timeline Line */}
+                            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/50 via-primary/30 to-transparent" />
+
+                            <div className="space-y-0">
+                              {comments[post.id].map((comment, index) => (
+                                <div
+                                  key={comment.id}
+                                  className="relative pl-12 pb-4 group/comment"
+                                >
+                                  {/* Timeline Node */}
+                                  <div className="absolute left-0 top-0 flex items-center justify-center">
+                                    <div className="relative">
+                                      {/* Pulse animation for latest comment */}
+                                      <div className={`absolute inset-0 rounded-full ${
+                                        index === comments[post.id].length - 1
+                                          ? 'bg-primary/20 animate-ping'
+                                          : ''
+                                      }`} />
+                                      {/* Avatar as timeline node */}
+                                      <Avatar className="h-8 w-8 border-2 border-background shadow-sm ring-2 ring-primary/20 relative z-10">
+                                        {comment.author.image && (
+                                          <AvatarImage src={comment.author.image} alt={comment.author.name} />
+                                        )}
+                                        <AvatarFallback className="text-xs font-medium bg-primary text-primary-foreground">
+                                          {getInitials(comment.author.name)}
+                                        </AvatarFallback>
+                                      </Avatar>
                                     </div>
-                                    {canDeleteComment(comment, post.authorId) && (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 opacity-0 group-hover/comment:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                                        onClick={() => handleDeleteComment(post.id, comment.id)}
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                        <span className="sr-only">Delete comment</span>
-                                      </Button>
-                                    )}
                                   </div>
+
+                                  {/* Comment Content Card */}
+                                  <div className="relative">
+                                    {/* Arrow pointing to timeline */}
+                                    <div className="absolute -left-2 top-3 w-2 h-2 rotate-45 bg-background border-l border-b border-border" />
+
+                                    <div className="p-3 rounded-lg bg-background border transition-all hover:shadow-sm">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1 min-w-0">
+                                          {/* Header with author and timestamp */}
+                                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                                            <span className="font-medium text-sm text-foreground">
+                                              {comment.author.name}
+                                            </span>
+                                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                              {formatDate(new Date(comment.createdAt))}
+                                            </span>
+                                          </div>
+                                          {/* Comment content */}
+                                          <div
+                                            className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
+                                            dangerouslySetInnerHTML={{ __html: comment.content }}
+                                          />
+                                        </div>
+                                        {canDeleteComment(comment, post.authorId) && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 opacity-0 group-hover/comment:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                                            onClick={() => handleDeleteComment(post.id, comment.id)}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            <span className="sr-only">Delete comment</span>
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Connector line segment */}
+                                  {index < comments[post.id].length - 1 && (
+                                    <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-border" />
+                                  )}
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
                         )}
 
                         {/* No Comments Message */}
                         {!loadingComments[post.id] && (!comments[post.id] || comments[post.id].length === 0) && (
                           <div className="flex flex-col items-center justify-center py-6 text-center">
-                            <MessageSquare className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                            <p className="text-sm text-muted-foreground">No comments yet</p>
+                            <div className="relative">
+                              <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center">
+                                <MessageSquare className="h-6 w-6 text-muted-foreground/40" />
+                              </div>
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-gradient-to-b from-muted-foreground/20 to-transparent" />
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-3">No comments yet</p>
                           </div>
                         )}
 
