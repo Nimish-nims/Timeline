@@ -44,7 +44,7 @@ export default function EddyterWrapper({
   }
 
   return (
-    <div className="eddyter-container min-h-[150px]" suppressHydrationWarning>
+    <div className="eddyter-container min-h-[150px] w-full" style={{ width: '100%', maxWidth: 'none' }} suppressHydrationWarning>
       <EditorProvider
         defaultFontFamilies={defaultEditorConfig.defaultFontFamilies}
         apiKey={apiKey}

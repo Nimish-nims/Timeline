@@ -143,7 +143,7 @@ export function PostEditor({ onPost }: PostEditorProps) {
         />
 
         {/* Content Editor */}
-        <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
+        <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow w-full" style={{ width: '100%' }}>
           <EddyterWrapper
             key={editorKey}
             onChange={handleContentChange}
