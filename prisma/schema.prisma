@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -35,6 +36,18 @@ model Post {
   comments  Comment[]
   tags      Tag[]     @relation("PostTags")
   shares    PostShare[]
+  history   PostHistory[]
+}
+
+model PostHistory {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  title     String?
+  content   String
+  editedAt  DateTime @default(now())
+
+  @@index([postId])
 }
 
 model PostShare {
