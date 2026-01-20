@@ -416,7 +416,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
+        <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
               <span className="text-primary-foreground font-bold">T</span>
@@ -530,7 +530,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-6xl px-6 py-8">
+      <main className="container mx-auto max-w-7xl px-6 py-8">
         <PostEditor onPost={handlePost} />
 
         {/* Tab Navigation */}
@@ -684,7 +684,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t py-8 mt-auto bg-muted/30">
-        <div className="container mx-auto max-w-5xl px-6">
+        <div className="container mx-auto max-w-6xl px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center">

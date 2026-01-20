@@ -24,6 +24,7 @@ import {
   X,
 } from 'lucide-react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { LinkPreviewHover } from 'eddyter'
 import {
   Dialog,
   DialogContent,
@@ -235,7 +236,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
+        <div className="container mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -254,7 +255,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         </div>
       </header>
 
-      <main className="container mx-auto max-w-4xl px-6 py-8">
+      <main className="container mx-auto max-w-5xl px-6 py-8">
         <Breadcrumbs
           items={[
             { label: user?.name || 'Profile', href: undefined }
@@ -428,10 +429,15 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                             {post.title}
                           </h3>
                         )}
-                        <div
-                          className="prose prose-sm dark:prose-invert max-w-none line-clamp-4"
-                          dangerouslySetInnerHTML={{ __html: post.content }}
-                        />
+                        <LinkPreviewHover
+                          apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                          enabled={true}
+                        >
+                          <div
+                            className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0 line-clamp-4"
+                            dangerouslySetInnerHTML={{ __html: post.content }}
+                          />
+                        </LinkPreviewHover>
 
                         {/* Tags */}
                         {post.tags && post.tags.length > 0 && (

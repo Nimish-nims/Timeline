@@ -135,7 +135,7 @@ export default function InvitePage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
+        <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -154,7 +154,7 @@ export default function InvitePage() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-5xl px-6 py-8">
+      <main className="container mx-auto max-w-6xl px-6 py-8">
         <Breadcrumbs
           items={[
             { label: 'Team Management', href: undefined }

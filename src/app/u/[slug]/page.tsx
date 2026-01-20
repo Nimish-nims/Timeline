@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, Calendar, FileText, Lock, ArrowLeft, User, MessageSquare, ChevronDown, ChevronUp } from "lucide-react"
+import { LinkPreviewHover } from "eddyter"
 
 interface Comment {
   id: string
@@ -179,7 +180,7 @@ export default function PublicTimelinePage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
+        <div className="container mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">T</span>
@@ -196,7 +197,7 @@ export default function PublicTimelinePage() {
 
       {/* Profile Header */}
       <div className="bg-background border-b">
-        <div className="container mx-auto max-w-3xl px-6 py-8">
+        <div className="container mx-auto max-w-4xl px-6 py-8">
           <div className="flex items-center gap-6">
             <Avatar className="h-20 w-20 border-4 border-background shadow-lg">
               <AvatarImage src={timeline.user.image || undefined} alt={timeline.user.name} />
@@ -222,7 +223,7 @@ export default function PublicTimelinePage() {
       </div>
 
       {/* Timeline */}
-      <main className="container mx-auto max-w-3xl px-6 py-8">
+      <main className="container mx-auto max-w-4xl px-6 py-8">
         {timeline.posts.length === 0 ? (
           <div className="text-center py-16">
             <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
@@ -252,10 +253,15 @@ export default function PublicTimelinePage() {
                       </p>
                     </div>
                   </div>
-                  <div
-                    className="prose prose-sm dark:prose-invert max-w-none"
-                    dangerouslySetInnerHTML={{ __html: post.content }}
-                  />
+                  <LinkPreviewHover
+                    apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                    enabled={true}
+                  >
+                    <div
+                      className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
+                      dangerouslySetInnerHTML={{ __html: post.content }}
+                    />
+                  </LinkPreviewHover>
                 </CardContent>
 
                 {/* Comments Section (Read-only for public view) */}
@@ -306,10 +312,15 @@ export default function PublicTimelinePage() {
                                 <span className="font-medium text-sm text-foreground">
                                   {comment.author.name}
                                 </span>
-                                <div
-                                  className="prose prose-sm dark:prose-invert max-w-none mt-0.5 [&>p]:mb-1 [&>p:last-child]:mb-0"
-                                  dangerouslySetInnerHTML={{ __html: comment.content }}
-                                />
+                                <LinkPreviewHover
+                                  apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                                  enabled={true}
+                                >
+                                  <div
+                                    className="prose prose-sm dark:prose-invert max-w-none mt-0.5 [&>p]:mb-1 [&>p:last-child]:mb-0"
+                                    dangerouslySetInnerHTML={{ __html: comment.content }}
+                                  />
+                                </LinkPreviewHover>
                                 <p className="text-xs text-muted-foreground mt-1.5">
                                   {formatCommentTimestamp(comment.createdAt)}
                                 </p>
