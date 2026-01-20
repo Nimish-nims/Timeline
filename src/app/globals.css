@@ -132,6 +132,13 @@
   background: var(--card);
 }
 
+.eddyter-container,
+.eddyter-container [id^="ct-editor-"] {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+
 .ct-editor-container .ProseMirror {
   min-height: 120px;
   padding: 1rem;
