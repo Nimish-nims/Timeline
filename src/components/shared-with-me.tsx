@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { LinkPreviewHover } from 'eddyter'
 
 interface Tag {
   id: string
@@ -318,10 +319,15 @@ export function SharedWithMe({ currentUserId }: SharedWithMeProps) {
                   {post.title}
                 </h3>
               )}
-              <div
-                className="prose prose-sm dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: post.content }}
-              />
+              <LinkPreviewHover
+                apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                enabled={true}
+              >
+                <div
+                  className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
+                  dangerouslySetInnerHTML={{ __html: post.content }}
+                />
+              </LinkPreviewHover>
 
               {/* Tags */}
               {post.tags && post.tags.length > 0 && (

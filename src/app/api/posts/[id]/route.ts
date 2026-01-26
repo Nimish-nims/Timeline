@@ -29,6 +29,15 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    // Save current version to history before updating
+    await prisma.postHistory.create({
+      data: {
+        postId: post.id,
+        title: post.title,
+        content: post.content,
+      }
+    })
+
     // Process tags if provided
     const tagConnections = []
     if (tags && Array.isArray(tags)) {

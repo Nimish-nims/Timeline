@@ -16,6 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
+import { LinkPreviewHover } from 'eddyter'
 
 const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
   ssr: false,
@@ -771,10 +772,15 @@ export function Timeline({
                           {post.title}
                         </h3>
                       )}
-                      <div
-                        className="prose prose-sm dark:prose-invert max-w-none"
-                        dangerouslySetInnerHTML={{ __html: post.content }}
-                      />
+                      <LinkPreviewHover
+                        apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                        enabled={true}
+                      >
+                        <div
+                          className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
+                          dangerouslySetInnerHTML={{ __html: post.content }}
+                        />
+                      </LinkPreviewHover>
                       {/* Tags Display - Always visible when tags exist */}
                       {post.tags && post.tags.length > 0 && (
                         <div className="flex flex-wrap items-center gap-1.5 mt-3">
@@ -937,10 +943,15 @@ export function Timeline({
                                             </span>
                                           </div>
                                           {/* Comment content */}
-                                          <div
-                                            className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                                            dangerouslySetInnerHTML={{ __html: comment.content }}
-                                          />
+                                          <LinkPreviewHover
+                                            apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                                            enabled={true}
+                                          >
+                                            <div
+                                              className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
+                                              dangerouslySetInnerHTML={{ __html: comment.content }}
+                                            />
+                                          </LinkPreviewHover>
                                         </div>
                                         {canDeleteComment(comment, post.authorId) && (
                                           <Button
