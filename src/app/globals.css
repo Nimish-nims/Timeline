@@ -267,6 +267,53 @@
   border-radius: var(--radius);
 }
 
+/* Canvas elements in post content */
+.prose canvas {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  display: block;
+}
+
+/* Eddyter canvas wrapper and container */
+.prose [data-canvas-container],
+.prose .canvas-wrapper,
+.prose [class*="canvas-container"],
+.prose [class*="CanvasContainer"] {
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  margin: 0.75rem 0;
+}
+
+/* Prevent canvas from overflowing post card */
+.prose > div:has(canvas),
+.prose div:has(> canvas) {
+  max-width: 100%;
+  overflow: auto;
+}
+
+/* Handle Eddyter drawing/whiteboard output */
+.prose [data-type="drawing"],
+.prose [data-drawing],
+.prose .drawing-container {
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--muted);
+  padding: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.prose [data-type="drawing"] canvas,
+.prose [data-drawing] canvas,
+.prose .drawing-container canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
 /* Timeline specific styles */
 .timeline-line {
   background: linear-gradient(to bottom, var(--border) 0%, var(--border) 100%);
