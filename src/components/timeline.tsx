@@ -289,6 +289,9 @@ export function Timeline({
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({})
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({})
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editingCommentContent, setEditingCommentContent] = useState<string>('')
+  const [savingCommentEdit, setSavingCommentEdit] = useState(false)
 
   // Fetch comments for a post
   const fetchComments = async (postId: string) => {
@@ -357,6 +360,50 @@ export function Timeline({
     } catch (error) {
       console.error('Failed to delete comment:', error)
     }
+  }
+
+  // Start editing a comment
+  const handleEditComment = (comment: Comment) => {
+    setEditingCommentId(comment.id)
+    setEditingCommentContent(comment.content)
+  }
+
+  // Cancel editing a comment
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null)
+    setEditingCommentContent('')
+  }
+
+  // Save edited comment
+  const handleSaveEditComment = async (postId: string, commentId: string) => {
+    if (!editingCommentContent.replace(/<[^>]*>/g, '').trim()) return
+
+    setSavingCommentEdit(true)
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editingCommentContent })
+      })
+      if (response.ok) {
+        const updatedComment = await response.json()
+        setComments(prev => ({
+          ...prev,
+          [postId]: prev[postId]?.map(c => c.id === commentId ? updatedComment : c) || []
+        }))
+        setEditingCommentId(null)
+        setEditingCommentContent('')
+      }
+    } catch (error) {
+      console.error('Failed to update comment:', error)
+    } finally {
+      setSavingCommentEdit(false)
+    }
+  }
+
+  // Check if user can edit a comment (only comment author)
+  const canEditComment = (comment: Comment) => {
+    return comment.authorId === currentUserId
   }
 
   // Check if user can delete a comment
@@ -954,40 +1001,96 @@ export function Timeline({
                                     <div className="absolute -left-2 top-3 w-2 h-2 rotate-45 bg-background border-l border-b border-border" />
 
                                     <div className="p-3 rounded-lg bg-background border transition-all hover:shadow-sm">
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div className="flex-1 min-w-0">
-                                          {/* Header with author and timestamp */}
-                                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                                            <span className="font-medium text-sm text-foreground">
-                                              {comment.author.name}
-                                            </span>
-                                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                                              {formatDate(new Date(comment.createdAt))}
-                                            </span>
+                                      {editingCommentId === comment.id ? (
+                                        /* Edit Mode */
+                                        <div className="space-y-3">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                                            <span className="text-sm font-medium text-foreground">Edit comment</span>
                                           </div>
-                                          {/* Comment content */}
-                                          <LinkPreviewHover
-                                            apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
-                                            enabled={true}
-                                          >
-                                            <div
-                                              className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                                              dangerouslySetInnerHTML={{ __html: addLazyLoadingToImages(comment.content) }}
+                                          <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
+                                            <EddyterWrapper
+                                              onChange={(html) => setEditingCommentContent(html)}
+                                              placeholder="Edit your comment..."
+                                              initialContent={comment.content}
+                                              key={`edit-comment-${comment.id}`}
                                             />
-                                          </LinkPreviewHover>
+                                          </div>
+                                          <div className="flex justify-end gap-2">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={handleCancelEditComment}
+                                              disabled={savingCommentEdit}
+                                            >
+                                              <X className="h-4 w-4 mr-1" />
+                                              Cancel
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              onClick={() => handleSaveEditComment(post.id, comment.id)}
+                                              disabled={!editingCommentContent.replace(/<[^>]*>/g, '').trim() || savingCommentEdit}
+                                            >
+                                              {savingCommentEdit ? (
+                                                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                                              ) : (
+                                                <Check className="h-4 w-4 mr-1" />
+                                              )}
+                                              Save
+                                            </Button>
+                                          </div>
                                         </div>
-                                        {canDeleteComment(comment, post.authorId) && (
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7 opacity-0 group-hover/comment:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                                            onClick={() => handleDeleteComment(post.id, comment.id)}
-                                          >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                            <span className="sr-only">Delete comment</span>
-                                          </Button>
-                                        )}
-                                      </div>
+                                      ) : (
+                                        /* View Mode */
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex-1 min-w-0">
+                                            {/* Header with author and timestamp */}
+                                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                                              <span className="font-medium text-sm text-foreground">
+                                                {comment.author.name}
+                                              </span>
+                                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                                {formatDate(new Date(comment.createdAt))}
+                                              </span>
+                                            </div>
+                                            {/* Comment content */}
+                                            <LinkPreviewHover
+                                              apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                                              enabled={true}
+                                            >
+                                              <div
+                                                className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
+                                                dangerouslySetInnerHTML={{ __html: addLazyLoadingToImages(comment.content) }}
+                                              />
+                                            </LinkPreviewHover>
+                                          </div>
+                                          {/* Action buttons */}
+                                          <div className="flex items-center gap-1 flex-shrink-0">
+                                            {canEditComment(comment) && (
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 opacity-0 group-hover/comment:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                onClick={() => handleEditComment(comment)}
+                                              >
+                                                <Pencil className="h-3.5 w-3.5" />
+                                                <span className="sr-only">Edit comment</span>
+                                              </Button>
+                                            )}
+                                            {canDeleteComment(comment, post.authorId) && (
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 opacity-0 group-hover/comment:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                onClick={() => handleDeleteComment(post.id, comment.id)}
+                                              >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                                <span className="sr-only">Delete comment</span>
+                                              </Button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
 
