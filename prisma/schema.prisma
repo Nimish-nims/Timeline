@@ -24,6 +24,8 @@ model User {
   invitations   Invitation[] @relation("InvitedBy")
   sharedPosts   PostShare[] @relation("SharedWith")
   postMentions  PostMention[] @relation("MentionedIn")
+  notificationsReceived Notification[] @relation("NotificationsReceived")
+  notificationsSent     Notification[] @relation("NotificationsSent")
 }
 
 model Post {
@@ -39,6 +41,7 @@ model Post {
   shares    PostShare[]
   history   PostHistory[]
   mentions  PostMention[]
+  notifications Notification[]
 }
 
 model PostMention {
@@ -111,4 +114,20 @@ model PasswordReset {
   used      Boolean  @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // e.g. "mention"
+  userId    String   // recipient
+  user      User     @relation("NotificationsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  actorId   String   // who did the action (e.g. who tagged you)
+  actor     User     @relation("NotificationsSent", fields: [actorId], references: [id], onDelete: Cascade)
+  postId    String?
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, read])
 }

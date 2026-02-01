@@ -17,6 +17,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { NotificationBell } from '@/components/notification-bell'
+import { useMentionMenuAvatars, type MemberForMention } from '@/lib/mention-menu-avatars'
 import {
   Clock,
   Loader2,
@@ -163,6 +165,9 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [previewEntry, setPreviewEntry] = useState<PostHistoryEntry | null>(null)
   const [mentionUserList, setMentionUserList] = useState<string[]>([])
+  const [membersForMentions, setMembersForMentions] = useState<MemberForMention[]>([])
+
+  useMentionMenuAvatars(membersForMentions)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -174,8 +179,18 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
         const res = await fetch('/api/members?all=true')
         if (res.ok) {
           const data = await res.json()
-          const names = (data.members ?? data).map((m: { name: string }) => m.name).filter(Boolean)
+          const members = data.members ?? data
+          const list = Array.isArray(members) ? members : []
+          const names = list.map((m: { name: string }) => m.name).filter(Boolean)
+          const forMentions: MemberForMention[] = list
+            .filter((m: { name?: string }) => typeof m?.name === 'string' && m.name.length > 0)
+            .map((m: { id: string; name: string; image?: string | null }) => ({
+              id: m.id,
+              name: m.name,
+              image: m.image ?? null,
+            }))
           setMentionUserList(names)
+          setMembersForMentions(forMentions)
         }
       } catch { /* ignore */ }
     }
@@ -334,6 +349,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                 </TooltipTrigger>
                 <TooltipContent>Home</TooltipContent>
               </Tooltip>
+              <NotificationBell />
               <ThemeToggle />
             </div>
           </div>

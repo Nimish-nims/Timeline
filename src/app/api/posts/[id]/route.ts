@@ -111,21 +111,46 @@ export async function PUT(
       }
     })
 
-    // Sync mentions from content
+    // Sync mentions from content and create notifications for newly tagged users (don't fail update if this fails)
     const mentionNames = getMentionNamesFromHtml(content)
-    await prisma.postMention.deleteMany({ where: { postId: id } })
-    if (mentionNames.length > 0) {
-      const users = await prisma.user.findMany({
-        where: { name: { in: mentionNames } },
-        select: { id: true }
-      })
-      const userIds = [...new Set(users.map(u => u.id))]
-      if (userIds.length > 0) {
-        await prisma.postMention.createMany({
-          data: userIds.map(userId => ({ postId: id, userId })),
-          skipDuplicates: true
+    const authorId = session.user.id
+    try {
+      await prisma.postMention.deleteMany({ where: { postId: id } })
+      if (mentionNames.length > 0) {
+        const users = await prisma.user.findMany({
+          where: { name: { in: mentionNames } },
+          select: { id: true }
         })
+        const userIds = [...new Set(users.map(u => u.id))]
+        if (userIds.length > 0) {
+          await prisma.postMention.createMany({
+            data: userIds.map(userId => ({ postId: id, userId })),
+            skipDuplicates: true
+          })
+          try {
+            for (const userId of userIds) {
+              if (userId === authorId) continue
+              const exists = await prisma.notification.findFirst({
+                where: { userId, postId: id, type: 'mention' }
+              })
+              if (!exists) {
+                await prisma.notification.create({
+                  data: {
+                    type: 'mention',
+                    userId,
+                    actorId: authorId,
+                    postId: id
+                  }
+                })
+              }
+            }
+          } catch (notifErr) {
+            console.warn('Failed to create mention notifications (post update still saved):', notifErr)
+          }
+        }
       }
+    } catch (mentionErr) {
+      console.warn('Failed to sync mentions (post update still saved):', mentionErr)
     }
 
     const postWithMentions = await prisma.post.findUnique({

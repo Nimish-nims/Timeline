@@ -23,9 +23,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { LogOut, UserPlus, Loader2, Shield, Users, Camera, X, Share2, Copy, Check, Globe, Lock, Inbox, User, Tag, ChevronDown, Search } from 'lucide-react'
+import { LogOut, UserPlus, Loader2, Shield, Users, Camera, X, Share2, Copy, Check, Globe, Lock, Inbox, User, Tag, ChevronDown, Search, FileText } from 'lucide-react'
+import { NotificationBell } from '@/components/notification-bell'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 
 interface TagType {
   id: string
@@ -424,33 +426,39 @@ export default function Home() {
             <div className="hidden sm:block">
               <span className="text-xl font-bold tracking-tight">Timeline</span>
             </div>
-            {/* Member count badge */}
-            <div className="flex items-center gap-2 ml-4 px-3 py-1.5 bg-muted rounded-full">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
-              {/* Stacked avatars */}
-              <div className="flex -space-x-2 ml-1">
-                {recentMembers.slice(0, 3).map((member, i) => (
-                  <Avatar key={member.id} className="h-6 w-6 border-2 border-background">
-                    {member.image ? (
-                      <AvatarImage src={member.image} alt={member.name} />
-                    ) : null}
-                    <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
-                      {getInitials(member.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-                {memberCount > 3 && (
-                  <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                    <span className="text-[10px] font-medium text-muted-foreground">+{memberCount - 3}</span>
-                  </div>
-                )}
+            {/* Member count and post count */}
+            <div className="flex items-center gap-2 ml-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
+                <div className="flex -space-x-2 ml-1">
+                  {recentMembers.slice(0, 3).map((member) => (
+                    <Avatar key={member.id} className="h-6 w-6 border-2 border-background">
+                      {member.image ? (
+                        <AvatarImage src={member.image} alt={member.name} />
+                      ) : null}
+                      <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                        {getInitials(member.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {memberCount > 3 && (
+                    <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                      <span className="text-[10px] font-medium text-muted-foreground">+{memberCount - 3}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium tabular-nums">{posts.length} {posts.length === 1 ? 'post' : 'posts'}</span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <NotificationBell />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -546,6 +554,9 @@ export default function Home() {
             >
               <Users className="h-4 w-4" />
               All Posts
+              <Badge variant="secondary" className="ml-1 font-normal tabular-nums">
+                {posts.length}
+              </Badge>
             </button>
             <button
               onClick={() => setActiveTab('shared')}

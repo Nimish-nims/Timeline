@@ -192,25 +192,53 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Parse mentions from content and create PostMention records
+    // Parse mentions from content and create PostMention records + notifications for tagged users
     const mentionNames = getMentionNamesFromHtml(content)
+    const authorId = session.user.id
     if (mentionNames.length > 0) {
-      const users = await prisma.user.findMany({
-        where: { name: { in: mentionNames } },
-        select: { id: true }
-      })
-      const userIds = [...new Set(users.map(u => u.id))]
-      if (userIds.length > 0) {
-        await prisma.postMention.createMany({
-          data: userIds.map(userId => ({ postId: post.id, userId })),
-          skipDuplicates: true
+      try {
+        const users = await prisma.user.findMany({
+          where: { name: { in: mentionNames } },
+          select: { id: true }
         })
+        const userIds = [...new Set(users.map(u => u.id))]
+        if (userIds.length > 0) {
+          await prisma.postMention.createMany({
+            data: userIds.map(userId => ({ postId: post.id, userId })),
+            skipDuplicates: true
+          })
+          // Notify each mentioned user (except the author) - don't fail post creation if this fails
+          try {
+            for (const userId of userIds) {
+              if (userId === authorId) continue
+              const exists = await prisma.notification.findFirst({
+                where: { userId, postId: post.id, type: 'mention' }
+              })
+              if (!exists) {
+                await prisma.notification.create({
+                  data: {
+                    type: 'mention',
+                    userId,
+                    actorId: authorId,
+                    postId: post.id
+                  }
+                })
+              }
+            }
+          } catch (notifErr) {
+            console.warn('Failed to create mention notifications (post still saved):', notifErr)
+          }
+        }
+      } catch (mentionErr) {
+        console.warn('Failed to process mentions (post still saved):', mentionErr)
       }
     }
 
-    // Re-fetch with mentions if we added any
-    const postWithMentions = mentionNames.length > 0
-      ? await prisma.post.findUnique({
+    // Re-fetch with mentions if we added any (don't fail response if this fails)
+    let postToReturn = post
+    if (mentionNames.length > 0) {
+      try {
+        const refetched = await prisma.post.findUnique({
           where: { id: post.id },
           include: {
             author: { select: { id: true, name: true, email: true, image: true } },
@@ -220,9 +248,13 @@ export async function POST(request: NextRequest) {
             _count: { select: { comments: true } }
           }
         })
-      : post
+        if (refetched) postToReturn = refetched
+      } catch (_) {
+        // return post without mentions
+      }
+    }
 
-    return NextResponse.json(postWithMentions ?? post)
+    return NextResponse.json(postToReturn)
   } catch (error) {
     console.error("Failed to create post:", error)
     return NextResponse.json({ error: "Failed to create post" }, { status: 500 })

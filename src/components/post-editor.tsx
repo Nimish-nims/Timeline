@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Send, Loader2, X, Tag, Plus } from 'lucide-react'
+import { useMentionMenuAvatars, type MemberForMention } from '@/lib/mention-menu-avatars'
 
 const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
   ssr: false,
@@ -42,8 +43,11 @@ export function PostEditor({ onPost }: PostEditorProps) {
   const [showTagInput, setShowTagInput] = useState(false)
   const [suggestedTags, setSuggestedTags] = useState<string[]>([])
   const [mentionUserList, setMentionUserList] = useState<string[]>([])
+  const [membersForMentions, setMembersForMentions] = useState<MemberForMention[]>([])
   const [mentionListReady, setMentionListReady] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
+
+  useMentionMenuAvatars(membersForMentions)
 
   // Fetch existing tags for suggestions
   useEffect(() => {
@@ -72,12 +76,19 @@ export function PostEditor({ onPost }: PostEditorProps) {
         if (res.ok) {
           const data = await res.json()
           const members = data.members ?? data
-          const names: string[] = Array.isArray(members)
-            ? members
-                .map((m: { name?: string }) => m?.name)
-                .filter((n): n is string => typeof n === 'string' && n.length > 0)
-            : []
+          const list = Array.isArray(members) ? members : []
+          const names: string[] = list
+            .map((m: { name?: string }) => m?.name)
+            .filter((n): n is string => typeof n === 'string' && n.length > 0)
+          const forMentions: MemberForMention[] = list
+            .filter((m: { name?: string }) => typeof m?.name === 'string' && m.name.length > 0)
+            .map((m: { id: string; name: string; image?: string | null }) => ({
+              id: m.id,
+              name: m.name,
+              image: m.image ?? null,
+            }))
           setMentionUserList(names)
+          setMembersForMentions(forMentions)
         }
         setMentionListReady(true)
       } catch (error) {
