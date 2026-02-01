@@ -55,6 +55,7 @@ export async function PUT(
       }
     }
 
+    // Use minimal include so update succeeds even if PostMention table doesn't exist
     const updatedPost = await prisma.post.update({
       where: { id },
       data: {
@@ -79,30 +80,6 @@ export async function PUT(
           select: {
             id: true,
             name: true,
-          }
-        },
-        shares: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              }
-            }
-          }
-        },
-        mentions: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              }
-            }
           }
         },
         _count: {
@@ -153,18 +130,29 @@ export async function PUT(
       console.warn('Failed to sync mentions (post update still saved):', mentionErr)
     }
 
-    const postWithMentions = await prisma.post.findUnique({
-      where: { id },
-      include: {
-        author: { select: { id: true, name: true, email: true, image: true } },
-        tags: { select: { id: true, name: true } },
-        shares: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
-        mentions: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
-        _count: { select: { comments: true } }
-      }
-    })
+    // Re-fetch with shares/mentions (don't fail if tables don't exist)
+    let postToReturn: typeof updatedPost & { shares?: unknown[]; mentions?: unknown[] } = {
+      ...updatedPost,
+      shares: [],
+      mentions: []
+    }
+    try {
+      const refetched = await prisma.post.findUnique({
+        where: { id },
+        include: {
+          author: { select: { id: true, name: true, email: true, image: true } },
+          tags: { select: { id: true, name: true } },
+          shares: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
+          mentions: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
+          _count: { select: { comments: true } }
+        }
+      })
+      if (refetched) postToReturn = refetched
+    } catch (_) {
+      // keep postToReturn with empty shares/mentions
+    }
 
-    return NextResponse.json(postWithMentions ?? updatedPost)
+    return NextResponse.json(postToReturn)
   } catch (error) {
     console.error("Failed to update post:", error)
     return NextResponse.json({ error: "Failed to update post" }, { status: 500 })

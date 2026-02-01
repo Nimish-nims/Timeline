@@ -15,67 +15,118 @@ export async function GET(
 
     const { id } = await params
 
-    const post = await prisma.post.findUnique({
-      where: { id },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          }
-        },
-        tags: {
-          select: {
-            id: true,
-            name: true,
-          }
-        },
-        shares: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              }
+    // Try full query first, fallback to minimal if mentions/shares tables don't exist
+    let post
+    try {
+      post = await prisma.post.findUnique({
+        where: { id },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
             }
-          }
-        },
-        mentions: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              }
+          },
+          tags: {
+            select: {
+              id: true,
+              name: true,
             }
-          }
-        },
-        comments: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
+          },
+          shares: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                }
               }
             }
           },
-          orderBy: {
-            createdAt: 'asc'
+          mentions: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                }
+              }
+            }
+          },
+          comments: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                }
+              }
+            },
+            orderBy: {
+              createdAt: 'asc'
+            }
+          },
+          _count: {
+            select: { comments: true }
           }
-        },
-        _count: {
-          select: { comments: true }
+        }
+      })
+    } catch (relationErr) {
+      // Fallback: try without mentions/shares if those tables don't exist
+      console.warn("Failed to fetch post with all relations, trying minimal:", relationErr)
+      const minimalPost = await prisma.post.findUnique({
+        where: { id },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+            }
+          },
+          tags: {
+            select: {
+              id: true,
+              name: true,
+            }
+          },
+          comments: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                }
+              }
+            },
+            orderBy: {
+              createdAt: 'asc'
+            }
+          },
+          _count: {
+            select: { comments: true }
+          }
+        }
+      })
+      if (minimalPost) {
+        post = {
+          ...minimalPost,
+          shares: [],
+          mentions: []
         }
       }
-    })
+    }
 
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 })
@@ -83,7 +134,8 @@ export async function GET(
 
     // Check if user has access to this post
     const isAuthor = post.authorId === session.user.id
-    const isSharedWith = post.shares.some(share => share.userId === session.user.id)
+    const shares = (post as { shares?: { userId: string }[] }).shares ?? []
+    const isSharedWith = shares.some(share => share.userId === session.user.id)
     const isAdmin = session.user.role === 'admin'
 
     if (!isAuthor && !isSharedWith && !isAdmin) {
