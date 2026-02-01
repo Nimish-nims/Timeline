@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { LinkPreviewHover } from 'eddyter'
+import { addLazyLoadingToImages } from '@/lib/lazy-images'
 
 const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
   ssr: false,
@@ -780,7 +781,7 @@ export function Timeline({
                       >
                         <div
                           className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                          dangerouslySetInnerHTML={{ __html: post.content }}
+                          dangerouslySetInnerHTML={{ __html: addLazyLoadingToImages(post.content) }}
                         />
                       </LinkPreviewHover>
                       {/* Tags Display - Always visible when tags exist */}
@@ -971,7 +972,7 @@ export function Timeline({
                                           >
                                             <div
                                               className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                                              dangerouslySetInnerHTML={{ __html: comment.content }}
+                                              dangerouslySetInnerHTML={{ __html: addLazyLoadingToImages(comment.content) }}
                                             />
                                           </LinkPreviewHover>
                                         </div>

@@ -7,19 +7,38 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const tag = searchParams.get('tag')
+    const cursor = searchParams.get('cursor')
+    const limitParam = searchParams.get('limit')
+    const limit = Math.min(Math.max(parseInt(limitParam || '20', 10) || 20, 1), 50)
+
+    // Build where clause
+    const where = tag ? {
+      tags: {
+        some: {
+          name: tag.toLowerCase()
+        }
+      }
+    } : undefined
+
+    // Get total count for display
+    let totalCount = 0
+    try {
+      totalCount = await prisma.post.count({ where })
+    } catch {
+      // If count fails, continue without it
+    }
 
     // First, try to get posts with all relations
     // If that fails, fall back to a simpler query
     let posts
     try {
       posts = await prisma.post.findMany({
-        where: tag ? {
-          tags: {
-            some: {
-              name: tag.toLowerCase()
-            }
-          }
-        } : undefined,
+        where,
+        take: limit + 1, // Fetch one extra to check if there are more
+        ...(cursor && {
+          skip: 1, // Skip the cursor itself
+          cursor: { id: cursor }
+        }),
         include: {
           author: {
             select: {
@@ -71,6 +90,12 @@ export async function GET(request: NextRequest) {
       // Fallback: try without relations if they don't exist yet
       console.warn("Failed to fetch with relations, trying simple query:", relationError)
       posts = await prisma.post.findMany({
+        where,
+        take: limit + 1,
+        ...(cursor && {
+          skip: 1,
+          cursor: { id: cursor }
+        }),
         include: {
           author: {
             select: {
@@ -95,7 +120,21 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    return NextResponse.json(posts)
+    // Check if there are more posts
+    const hasMore = posts.length > limit
+    if (hasMore) {
+      posts = posts.slice(0, limit) // Remove the extra post
+    }
+
+    // Get the cursor for the next page
+    const nextCursor = hasMore && posts.length > 0 ? posts[posts.length - 1].id : null
+
+    return NextResponse.json({
+      posts,
+      nextCursor,
+      hasMore,
+      totalCount
+    })
   } catch (error) {
     console.error("Failed to fetch posts:", error)
     const errorMessage = error instanceof Error ? error.message : String(error)

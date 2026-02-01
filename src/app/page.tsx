@@ -79,6 +79,10 @@ export default function Home() {
   const router = useRouter()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [totalPostCount, setTotalPostCount] = useState(0)
   const [memberCount, setMemberCount] = useState(0)
   const [recentMembers, setRecentMembers] = useState<Member[]>([])
   const [profileImage, setProfileImage] = useState<string | null>(null)
@@ -92,6 +96,7 @@ export default function Home() {
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const tagDropdownRef = useRef<HTMLDivElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
   
   // Share state
   const [showShareDialog, setShowShareDialog] = useState(false)
@@ -148,22 +153,68 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const fetchPosts = async () => {
+  // Infinite scroll - load more when sentinel is visible
+  useEffect(() => {
+    if (!loadMoreRef.current || loading) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && activeTab === 'all') {
+          loadMorePosts()
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    )
+
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loading, activeTab, nextCursor])
+
+  const fetchPosts = async (cursor?: string | null, append = false) => {
+    if (append) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
     try {
-      const res = await fetch('/api/posts')
+      const params = new URLSearchParams()
+      params.set('limit', '20')
+      if (cursor) params.set('cursor', cursor)
+      
+      const res = await fetch(`/api/posts?${params.toString()}`)
       const data = await res.json()
-      // Ensure data is an array before setting posts
-      if (Array.isArray(data)) {
-        setPosts(data)
+      
+      // Handle new paginated response format
+      if (data.posts && Array.isArray(data.posts)) {
+        if (append) {
+          setPosts(prev => [...prev, ...data.posts])
+        } else {
+          setPosts(data.posts)
+        }
+        setNextCursor(data.nextCursor)
+        setHasMore(data.hasMore)
+        setTotalPostCount(data.totalCount || 0)
+      } else if (Array.isArray(data)) {
+        // Fallback for old format
+        setPosts(append ? prev => [...prev, ...data] : data)
+        setHasMore(false)
+        setTotalPostCount(data.length)
       } else {
-        console.error('Posts API returned non-array:', data)
-        setPosts([])
+        console.error('Posts API returned unexpected format:', data)
+        if (!append) setPosts([])
       }
     } catch (error) {
       console.error('Failed to fetch posts:', error)
-      setPosts([])
+      if (!append) setPosts([])
     } finally {
       setLoading(false)
+      setLoadingMore(false)
+    }
+  }
+
+  const loadMorePosts = () => {
+    if (!loadingMore && hasMore && nextCursor) {
+      fetchPosts(nextCursor, true)
     }
   }
 
@@ -323,6 +374,7 @@ export default function Home() {
       if (res.ok) {
         const newPost = await res.json()
         setPosts([newPost, ...posts])
+        setTotalPostCount(prev => prev + 1)
         // Refresh tags to include any new ones
         if (tags.length > 0) {
           fetchTags()
@@ -341,6 +393,7 @@ export default function Home() {
 
       if (res.ok) {
         setPosts(posts.filter(post => post.id !== id))
+        setTotalPostCount(prev => Math.max(0, prev - 1))
       }
     } catch (error) {
       console.error('Failed to delete post:', error)
@@ -451,7 +504,7 @@ export default function Home() {
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
                 <FileText className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium tabular-nums">{posts.length} {posts.length === 1 ? 'post' : 'posts'}</span>
+                <span className="text-sm font-medium tabular-nums">{totalPostCount} {totalPostCount === 1 ? 'post' : 'posts'}</span>
               </div>
             </div>
           </div>
@@ -555,7 +608,7 @@ export default function Home() {
               <Users className="h-4 w-4" />
               All Posts
               <Badge variant="secondary" className="ml-1 font-normal tabular-nums">
-                {posts.length}
+                {totalPostCount}
               </Badge>
             </button>
             <button
@@ -660,34 +713,51 @@ export default function Home() {
               <p className="text-sm text-muted-foreground mt-3">Loading posts...</p>
             </div>
           ) : (
-            <Timeline
-              posts={posts.map(post => ({
-                id: post.id,
-                title: post.title,
-                content: post.content,
-                authorName: post.author.name,
-                authorId: post.author.id,
-                authorImage: post.author.image,
-                createdAt: new Date(post.createdAt),
-                updatedAt: new Date(post.updatedAt),
-                tags: post.tags,
-                shares: post.shares,
-                _count: post._count,
-              }))}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-              onSharePost={handleSharePost}
-              onUnsharePost={handleUnsharePost}
-              currentUserId={session?.user?.id}
-              isAdmin={isAdmin}
-              filterByUserId={filterByUserId}
-              filterByUserName={filterByUserName}
-              onFilterByUser={handleFilterByUser}
-              onClearFilter={handleClearFilter}
-              filterByTag={filterByTag}
-              onFilterByTag={handleFilterByTag}
-              onClearTagFilter={handleClearTagFilter}
-            />
+            <>
+              <Timeline
+                posts={posts.map(post => ({
+                  id: post.id,
+                  title: post.title,
+                  content: post.content,
+                  authorName: post.author.name,
+                  authorId: post.author.id,
+                  authorImage: post.author.image,
+                  createdAt: new Date(post.createdAt),
+                  updatedAt: new Date(post.updatedAt),
+                  tags: post.tags,
+                  shares: post.shares,
+                  _count: post._count,
+                }))}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+                onSharePost={handleSharePost}
+                onUnsharePost={handleUnsharePost}
+                currentUserId={session?.user?.id}
+                isAdmin={isAdmin}
+                filterByUserId={filterByUserId}
+                filterByUserName={filterByUserName}
+                onFilterByUser={handleFilterByUser}
+                onClearFilter={handleClearFilter}
+                filterByTag={filterByTag}
+                onFilterByTag={handleFilterByTag}
+                onClearTagFilter={handleClearTagFilter}
+              />
+              
+              {/* Infinite scroll sentinel and loading indicator */}
+              <div ref={loadMoreRef} className="py-8">
+                {loadingMore && (
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Loading more posts...</p>
+                  </div>
+                )}
+                {!hasMore && posts.length > 0 && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    You&apos;ve reached the end
+                  </p>
+                )}
+              </div>
+            </>
           )
         ) : (
           <SharedWithMe currentUserId={session?.user?.id} />

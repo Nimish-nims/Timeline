@@ -260,6 +260,13 @@
   margin-top: 0;
 }
 
+/* Images in post content */
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+}
+
 /* Timeline specific styles */
 .timeline-line {
   background: linear-gradient(to bottom, var(--border) 0%, var(--border) 100%);
