@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Use minimal include so create succeeds even if PostMention/Notification tables don't exist yet
     const post = await prisma.post.create({
       data: {
         title: title?.trim() || null,
@@ -160,30 +161,6 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             name: true,
-          }
-        },
-        shares: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              }
-            }
-          }
-        },
-        mentions: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              }
-            }
           }
         },
         _count: {
@@ -234,8 +211,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Re-fetch with mentions if we added any (don't fail response if this fails)
-    let postToReturn = post
+    // Re-fetch with shares/mentions if we added mentions (don't fail response if this fails)
+    let postToReturn: typeof post & { shares?: unknown[]; mentions?: unknown[] } = {
+      ...post,
+      shares: [],
+      mentions: []
+    }
     if (mentionNames.length > 0) {
       try {
         const refetched = await prisma.post.findUnique({
@@ -250,7 +231,7 @@ export async function POST(request: NextRequest) {
         })
         if (refetched) postToReturn = refetched
       } catch (_) {
-        // return post without mentions
+        // keep postToReturn with empty shares/mentions
       }
     }
 
