@@ -44,6 +44,18 @@ export async function GET(
             }
           }
         },
+        mentions: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              }
+            }
+          }
+        },
         comments: {
           include: {
             author: {

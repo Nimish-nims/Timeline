@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { getMentionNamesFromHtml } from "@/lib/mentions"
 
 export async function PUT(
   request: NextRequest,
@@ -92,13 +93,53 @@ export async function PUT(
             }
           }
         },
+        mentions: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              }
+            }
+          }
+        },
         _count: {
           select: { comments: true }
         }
       }
     })
 
-    return NextResponse.json(updatedPost)
+    // Sync mentions from content
+    const mentionNames = getMentionNamesFromHtml(content)
+    await prisma.postMention.deleteMany({ where: { postId: id } })
+    if (mentionNames.length > 0) {
+      const users = await prisma.user.findMany({
+        where: { name: { in: mentionNames } },
+        select: { id: true }
+      })
+      const userIds = [...new Set(users.map(u => u.id))]
+      if (userIds.length > 0) {
+        await prisma.postMention.createMany({
+          data: userIds.map(userId => ({ postId: id, userId })),
+          skipDuplicates: true
+        })
+      }
+    }
+
+    const postWithMentions = await prisma.post.findUnique({
+      where: { id },
+      include: {
+        author: { select: { id: true, name: true, email: true, image: true } },
+        tags: { select: { id: true, name: true } },
+        shares: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
+        mentions: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
+        _count: { select: { comments: true } }
+      }
+    })
+
+    return NextResponse.json(postWithMentions ?? updatedPost)
   } catch (error) {
     console.error("Failed to update post:", error)
     return NextResponse.json({ error: "Failed to update post" }, { status: 500 })

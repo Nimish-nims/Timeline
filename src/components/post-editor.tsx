@@ -41,6 +41,8 @@ export function PostEditor({ onPost }: PostEditorProps) {
   const [tagInput, setTagInput] = useState('')
   const [showTagInput, setShowTagInput] = useState(false)
   const [suggestedTags, setSuggestedTags] = useState<string[]>([])
+  const [mentionUserList, setMentionUserList] = useState<string[]>([])
+  const [mentionListReady, setMentionListReady] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
   // Fetch existing tags for suggestions
@@ -58,6 +60,36 @@ export function PostEditor({ onPost }: PostEditorProps) {
     }
     fetchTags()
   }, [])
+
+  // Fetch members for @mention suggestions — must complete before editor mounts so Eddyter gets the list
+  useEffect(() => {
+    if (!session?.user?.id) return
+    let cancelled = false
+    const fetchMembers = async () => {
+      try {
+        const res = await fetch('/api/members?all=true')
+        if (cancelled) return
+        if (res.ok) {
+          const data = await res.json()
+          const members = data.members ?? data
+          const names: string[] = Array.isArray(members)
+            ? members
+                .map((m: { name?: string }) => m?.name)
+                .filter((n): n is string => typeof n === 'string' && n.length > 0)
+            : []
+          setMentionUserList(names)
+        }
+        setMentionListReady(true)
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to fetch members for mentions:', error)
+          setMentionListReady(true)
+        }
+      }
+    }
+    fetchMembers()
+    return () => { cancelled = true }
+  }, [session?.user?.id])
 
   // Focus tag input when shown
   useEffect(() => {
@@ -144,11 +176,18 @@ export function PostEditor({ onPost }: PostEditorProps) {
 
         {/* Content Editor */}
         <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow w-full" style={{ width: '100%' }}>
-          <EddyterWrapper
-            key={editorKey}
-            onChange={handleContentChange}
-            placeholder="What's on your mind?"
-          />
+          {!mentionListReady ? (
+            <div className="h-[140px] flex items-center justify-center text-muted-foreground bg-muted/30">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : (
+            <EddyterWrapper
+              key={editorKey}
+              onChange={handleContentChange}
+              placeholder="What's on your mind? Type @ to tag someone"
+              mentionUserList={mentionUserList}
+            />
+          )}
         </div>
 
         {/* Tags Section */}

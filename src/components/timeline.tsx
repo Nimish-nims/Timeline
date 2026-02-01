@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -65,6 +66,7 @@ interface Post {
   updatedAt?: Date
   tags?: Tag[]
   shares?: { user: SharedUser }[]
+  mentions?: { user: SharedUser }[]
   _count?: {
     comments: number
   }
@@ -794,6 +796,26 @@ export function Timeline({
                               {tag.name}
                             </button>
                           ))}
+                        </div>
+                      )}
+                      {/* Tagged users (mentions) */}
+                      {post.mentions && post.mentions.length > 0 && (
+                        <div className="flex items-center gap-2 mt-3">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <User className="h-3.5 w-3.5" />
+                            <span>Tagged</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {post.mentions.map((m) => (
+                              <Link
+                                key={m.user.id}
+                                href={`/profile/${m.user.id}`}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-muted hover:bg-muted/80 text-foreground transition-colors"
+                              >
+                                {m.user.name}
+                              </Link>
+                            ))}
+                          </div>
                         </div>
                       )}
                       {/* Shared Users Display */}

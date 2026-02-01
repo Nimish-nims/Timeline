@@ -12,12 +12,15 @@ interface EddyterWrapperProps {
   onChange: (html: string) => void
   placeholder?: string
   initialContent?: string
+  /** List of user display names for @mention suggestions in the editor */
+  mentionUserList?: string[]
 }
 
 export default function EddyterWrapper({
   onChange,
   placeholder = "Start typing...",
-  initialContent = ""
+  initialContent = "",
+  mentionUserList = []
 }: EddyterWrapperProps) {
   const [isClient, setIsClient] = useState(false)
   
@@ -48,11 +51,13 @@ export default function EddyterWrapper({
       <EditorProvider
         defaultFontFamilies={defaultEditorConfig.defaultFontFamilies}
         apiKey={apiKey}
+        mentionUserList={mentionUserList}
       >
         <ConfigurableEditorWithAuth
           apiKey={apiKey}
           onChange={onChange}
           initialContent={initialContent || `<p>${placeholder}</p>`}
+          mentionUserList={mentionUserList}
           onAuthSuccess={() => {
             console.log('[Eddyter] Authentication successful')
           }}

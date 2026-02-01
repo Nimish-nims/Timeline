@@ -23,6 +23,7 @@ model User {
   comments      Comment[]
   invitations   Invitation[] @relation("InvitedBy")
   sharedPosts   PostShare[] @relation("SharedWith")
+  postMentions  PostMention[] @relation("MentionedIn")
 }
 
 model Post {
@@ -37,6 +38,19 @@ model Post {
   tags      Tag[]     @relation("PostTags")
   shares    PostShare[]
   history   PostHistory[]
+  mentions  PostMention[]
+}
+
+model PostMention {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("MentionedIn", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
 }
 
 model PostHistory {

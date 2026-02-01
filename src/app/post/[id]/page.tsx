@@ -28,6 +28,7 @@ import {
   Check,
   Tag,
   Users,
+  User,
   ChevronLeft,
   History,
   RotateCcw,
@@ -90,6 +91,7 @@ interface Post {
   }
   tags?: TagType[]
   shares?: { user: SharedUser }[]
+  mentions?: { user: SharedUser }[]
   comments?: Comment[]
   _count?: {
     comments: number
@@ -160,10 +162,25 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [previewEntry, setPreviewEntry] = useState<PostHistoryEntry | null>(null)
+  const [mentionUserList, setMentionUserList] = useState<string[]>([])
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
   }, [status, router])
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const res = await fetch('/api/members?all=true')
+        if (res.ok) {
+          const data = await res.json()
+          const names = (data.members ?? data).map((m: { name: string }) => m.name).filter(Boolean)
+          setMentionUserList(names)
+        }
+      } catch { /* ignore */ }
+    }
+    if (session) fetchMembers()
+  }, [session])
 
   useEffect(() => {
     if (session && id) fetchPost()
@@ -407,7 +424,11 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                   {isEditing ? (
                     <div className="space-y-4">
                       <div className="rounded-lg border overflow-hidden [&_.eddyter-container]:!max-w-full [&_.ProseMirror]:!max-w-full">
-                        <EddyterWrapper onChange={setEditContent} initialContent={post.content} />
+                        <EddyterWrapper
+                          onChange={setEditContent}
+                          initialContent={post.content}
+                          mentionUserList={mentionUserList}
+                        />
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
@@ -436,8 +457,8 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                   )}
                 </div>
 
-                {/* Tags & Shares Footer */}
-                {!isEditing && ((post.tags && post.tags.length > 0) || (post.shares && post.shares.length > 0)) && (
+                {/* Tags, Mentions & Shares Footer */}
+                {!isEditing && ((post.tags && post.tags.length > 0) || (post.mentions && post.mentions.length > 0) || (post.shares && post.shares.length > 0)) && (
                   <>
                     <Separator />
                     <div className="px-6 py-4 flex flex-wrap items-center gap-4">
@@ -449,6 +470,20 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                               <Badge key={tag.id} variant="secondary" className="text-xs">
                                 {tag.name}
                               </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {post.mentions && post.mentions.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex flex-wrap gap-1.5">
+                            {post.mentions.map(m => (
+                              <Link key={m.user.id} href={`/profile/${m.user.id}`}>
+                                <Badge variant="outline" className="text-xs hover:bg-muted">
+                                  {m.user.name}
+                                </Badge>
+                              </Link>
                             ))}
                           </div>
                         </div>
