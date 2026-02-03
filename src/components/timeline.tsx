@@ -7,7 +7,15 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Trash2, Pencil, X, Check, Clock, Loader2, MessageSquare, Send, ChevronDown, ChevronUp, Tag, Plus, Share2, Users, Maximize2, User, Folder } from 'lucide-react'
+import { Trash2, Pencil, X, Check, Clock, Loader2, MessageSquare, Send, ChevronDown, ChevronUp, Tag, Plus, Share2, Users, Maximize2, User, Folder, Inbox } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import {
   Dialog,
@@ -830,24 +838,54 @@ export function Timeline({
 
                       {/* Folder selector when editing */}
                       {folders.length > 0 && (
-                        <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-                          <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                            <Folder className="h-3.5 w-3.5 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Move to folder</label>
-                            <select
-                              value={editFolderId ?? ''}
-                              onChange={(e) => setEditFolderId(e.target.value === '' ? null : e.target.value)}
-                              className="w-full h-8 rounded-md border border-input bg-background px-2 py-1 text-sm cursor-pointer"
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors text-left cursor-pointer"
                             >
-                              <option value="">📁 No folder (Uncategorized)</option>
-                              {folders.map((f) => (
-                                <option key={f.id} value={f.id}>📂 {f.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
+                              <div className={`h-7 w-7 rounded-md flex items-center justify-center shrink-0 ${editFolderId ? 'bg-primary/10' : 'bg-muted'}`}>
+                                {editFolderId ? (
+                                  <Folder className="h-3.5 w-3.5 text-primary" />
+                                ) : (
+                                  <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-muted-foreground leading-none mb-0.5">Move to folder</p>
+                                <p className="text-sm font-medium leading-none truncate">
+                                  {editFolderId
+                                    ? folders.find(f => f.id === editFolderId)?.name ?? 'Unknown folder'
+                                    : 'Uncategorized'}
+                                </p>
+                              </div>
+                              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                            <DropdownMenuLabel>Select folder</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setEditFolderId(null)}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <Inbox className="h-4 w-4 text-muted-foreground" />
+                              <span className="flex-1">Uncategorized</span>
+                              {editFolderId === null && <Check className="h-4 w-4 text-primary" />}
+                            </DropdownMenuItem>
+                            {folders.map((f) => (
+                              <DropdownMenuItem
+                                key={f.id}
+                                onClick={() => setEditFolderId(f.id)}
+                                className="flex items-center gap-2 cursor-pointer"
+                              >
+                                <Folder className="h-4 w-4 text-primary" />
+                                <span className="flex-1 truncate">{f.name}</span>
+                                {editFolderId === f.id && <Check className="h-4 w-4 text-primary" />}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </div>
                   ) : (

@@ -238,6 +238,21 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
     }
   }, [])
 
+  // Escape key to close preview
+  useEffect(() => {
+    if (!previewFile) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewFile(null)
+    }
+    document.addEventListener("keydown", handleKey)
+    // Prevent body scroll while preview is open
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.removeEventListener("keydown", handleKey)
+      document.body.style.overflow = ""
+    }
+  }, [previewFile])
+
   // Initial fetch
   useEffect(() => {
     fetchMyFiles()
@@ -294,9 +309,15 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
 
       const data = await res.json()
 
+      if (!res.ok) {
+        const msg = data?.error || res.statusText || "Upload failed"
+        alert(msg)
+        return
+      }
+
       if (data.uploaded && data.uploaded.length > 0) {
-        setFiles((prev) => [...data.uploaded, ...prev])
-        setTotalCount((prev) => prev + data.uploaded.length)
+        // Refetch list so new files appear with correct URLs and server state
+        await fetchMyFiles()
       }
 
       if (data.errors && data.errors.length > 0) {
@@ -816,71 +837,119 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
         </div>
       )}
 
-      {/* ─── Preview Dialog ──────────────────────────────── */}
-      <Dialog open={!!previewFile} onOpenChange={(open) => !open && setPreviewFile(null)}>
-        <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="truncate pr-8">{previewFile?.fileName}</DialogTitle>
-            <DialogDescription className="flex items-center gap-2">
-              <span>{previewFile && formatFileSize(previewFile.fileSize)}</span>
-              <span>-</span>
-              <span>{previewFile?.mimeType}</span>
-              {previewFile && (
-                <>
-                  <span>-</span>
-                  <span>{formatDate(previewFile.createdAt)}</span>
-                </>
+      {/* ─── Full-Screen File Viewer ──────────────────────── */}
+      {previewFile && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm animate-in fade-in-0 duration-200">
+          {/* Top bar */}
+          <div className="flex items-center justify-between px-4 py-3 bg-black/60 border-b border-white/10">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {React.createElement(getFileIcon(previewFile.mimeType), {
+                className: "h-5 w-5 text-white/70 shrink-0",
+              })}
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white truncate">{previewFile.fileName}</p>
+                <p className="text-xs text-white/50">
+                  {formatFileSize(previewFile.fileSize)} &middot; {previewFile.mimeType.split("/")[1]?.toUpperCase()} &middot; {formatDate(previewFile.createdAt)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white/70 hover:text-white hover:bg-white/10 gap-2 h-9"
+                onClick={() => handleDownload(previewFile)}
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Download</span>
+              </Button>
+              {previewFile.uploaderId === currentUserId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/70 hover:text-white hover:bg-white/10 gap-2 h-9"
+                  onClick={() => {
+                    const file = previewFile
+                    setPreviewFile(null)
+                    openShareDialog(file)
+                  }}
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Share</span>
+                </Button>
               )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-auto min-h-0">
-            {previewFile?.mimeType.startsWith("image/") ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white/70 hover:text-white hover:bg-white/10 h-9 w-9 ml-1"
+                onClick={() => setPreviewFile(null)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Content area - click outside to close */}
+          <div
+            className="flex-1 flex items-center justify-center p-4 overflow-auto min-h-0"
+            onClick={(e) => { if (e.target === e.currentTarget) setPreviewFile(null) }}
+          >
+            {previewFile.mimeType.startsWith("image/") ? (
               <img
                 src={previewFile.url}
                 alt={previewFile.fileName}
-                className="w-full h-auto rounded-lg object-contain max-h-[60vh]"
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
               />
-            ) : previewFile?.mimeType.startsWith("video/") ? (
+            ) : previewFile.mimeType.startsWith("video/") ? (
               <video
                 src={previewFile.url}
                 controls
-                className="w-full rounded-lg max-h-[60vh]"
+                autoPlay
+                className="max-w-full max-h-full rounded-lg shadow-2xl"
               >
                 Your browser does not support the video tag.
               </video>
-            ) : previewFile?.mimeType.startsWith("audio/") ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <Music className="h-16 w-16 text-muted-foreground" />
-                <audio src={previewFile.url} controls className="w-full max-w-md" />
+            ) : previewFile.mimeType.startsWith("audio/") ? (
+              <div className="flex flex-col items-center gap-6 p-8 rounded-2xl bg-white/5 border border-white/10 max-w-md w-full">
+                <div className="h-24 w-24 rounded-full bg-white/10 flex items-center justify-center">
+                  <Music className="h-12 w-12 text-white/60" />
+                </div>
+                <div className="text-center">
+                  <p className="text-white font-medium truncate max-w-[280px]">{previewFile.fileName}</p>
+                  <p className="text-sm text-white/50 mt-1">{formatFileSize(previewFile.fileSize)}</p>
+                </div>
+                <audio src={previewFile.url} controls autoPlay className="w-full" />
               </div>
+            ) : previewFile.mimeType.includes("pdf") ? (
+              <iframe
+                src={previewFile.url}
+                title={previewFile.fileName}
+                className="w-full h-full rounded-lg bg-white max-w-4xl"
+              />
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 gap-4">
-                {previewFile && React.createElement(getFileIcon(previewFile.mimeType), {
-                  className: "h-16 w-16 text-muted-foreground",
+              <div className="flex flex-col items-center gap-6 p-10 rounded-2xl bg-white/5 border border-white/10 text-center">
+                {React.createElement(getFileIcon(previewFile.mimeType), {
+                  className: "h-20 w-20 text-white/40",
                 })}
-                <p className="text-sm text-muted-foreground">
+                <div>
+                  <p className="text-white font-medium">{previewFile.fileName}</p>
+                  <p className="text-sm text-white/50 mt-1">{formatFileSize(previewFile.fileSize)}</p>
+                </div>
+                <p className="text-sm text-white/40">
                   Preview not available for this file type
                 </p>
+                <Button
+                  onClick={() => handleDownload(previewFile)}
+                  className="mt-2"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download File
+                </Button>
               </div>
             )}
           </div>
-          <div className="flex items-center justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={() => previewFile && handleDownload(previewFile)}>
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </Button>
-            {previewFile && previewFile.uploaderId === currentUserId && (
-              <Button variant="outline" onClick={() => {
-                setPreviewFile(null)
-                openShareDialog(previewFile)
-              }}>
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       {/* ─── Share Dialog ────────────────────────────────── */}
       <Dialog open={!!shareDialogFile} onOpenChange={(open) => !open && setShareDialogFile(null)}>

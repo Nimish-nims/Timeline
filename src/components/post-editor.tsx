@@ -7,7 +7,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
-import { Send, Loader2, X, Tag, Plus, Folder } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Send, Loader2, X, Tag, Plus, Folder, Inbox, ChevronDown, Check } from 'lucide-react'
 import { useMentionMenuAvatars, type MemberForMention } from '@/lib/mention-menu-avatars'
 
 const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
@@ -28,6 +36,10 @@ interface FolderOption {
 interface PostEditorProps {
   onPost: (content: string, tags: string[], title?: string, folderId?: string | null) => void
   folders?: FolderOption[]
+  /** Pre-select and optionally lock saving to this folder (e.g. on folder page). */
+  defaultFolderId?: string | null
+  /** When true, hide folder selector and always save to defaultFolderId. */
+  lockFolder?: boolean
 }
 
 function getInitials(name: string): string {
@@ -39,7 +51,7 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function PostEditor({ onPost, folders = [] }: PostEditorProps) {
+export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder = false }: PostEditorProps) {
   const { data: session } = useSession()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -48,7 +60,7 @@ export function PostEditor({ onPost, folders = [] }: PostEditorProps) {
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [showTagInput, setShowTagInput] = useState(false)
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(defaultFolderId ?? null)
   const [suggestedTags, setSuggestedTags] = useState<string[]>([])
   const [mentionUserList, setMentionUserList] = useState<string[]>([])
   const [membersForMentions, setMembersForMentions] = useState<MemberForMention[]>([])
@@ -110,6 +122,13 @@ export function PostEditor({ onPost, folders = [] }: PostEditorProps) {
     return () => { cancelled = true }
   }, [session?.user?.id])
 
+  // Sync selected folder when defaultFolderId (e.g. from folder page) changes
+  useEffect(() => {
+    if (defaultFolderId !== undefined) {
+      setSelectedFolderId(defaultFolderId ?? null)
+    }
+  }, [defaultFolderId])
+
   // Focus tag input when shown
   useEffect(() => {
     if (showTagInput && tagInputRef.current) {
@@ -149,9 +168,10 @@ export function PostEditor({ onPost, folders = [] }: PostEditorProps) {
     const strippedContent = content.replace(/<[^>]*>/g, '').trim()
     if (!strippedContent) return
 
+    const folderIdToUse = lockFolder ? defaultFolderId : selectedFolderId
     setIsPosting(true)
     try {
-      onPost(content, tags, title.trim() || undefined, selectedFolderId)
+      onPost(content, tags, title.trim() || undefined, folderIdToUse)
       setTitle('')
       setContent('')
       setTags([])
@@ -209,143 +229,179 @@ export function PostEditor({ onPost, folders = [] }: PostEditorProps) {
           )}
         </div>
 
-        {/* Tags Section */}
-        <div className="mt-4 space-y-3">
-          {/* Display added tags */}
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground"
-                >
-                  <Tag className="h-3 w-3" />
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    className="ml-0.5 hover:bg-secondary-foreground/10 rounded p-0.5 transition-colors"
+        {/* Tags display + inline input */}
+        {(tags.length > 0 || showTagInput) && (
+          <div className="mt-3 space-y-2">
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Tag input area */}
-          {showTagInput ? (
-            <div className="relative">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    ref={tagInputRef}
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={handleTagKeyDown}
-                    placeholder="Type a tag and press Enter..."
-                    className="pl-9 h-9"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleAddTag}
-                  disabled={!tagInput.trim()}
-                  className="h-9 w-9"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setShowTagInput(false)
-                    setTagInput('')
-                  }}
-                  className="h-9 w-9"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Tag suggestions */}
-              {tagInput && filteredSuggestions.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md py-1">
-                  {filteredSuggestions.map((suggestion) => (
+                    <Tag className="h-3 w-3" />
+                    {tag}
                     <button
-                      key={suggestion}
                       type="button"
-                      onClick={() => {
-                        setTags([...tags, suggestion])
-                        setTagInput('')
-                      }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2 transition-colors"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="ml-0.5 hover:bg-secondary-foreground/10 rounded p-0.5 transition-colors"
                     >
-                      <Tag className="h-3 w-3 text-muted-foreground" />
-                      <span>{suggestion}</span>
+                      <X className="h-3 w-3" />
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowTagInput(true)}
-              className="h-8 px-3 text-muted-foreground hover:text-foreground"
-            >
-              <Tag className="h-3.5 w-3.5 mr-1.5" />
-              Add tags
-            </Button>
-          )}
-        </div>
-
-        {/* Folder selector */}
-        {folders.length > 0 && (
-          <div className="mt-3 flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-            <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-              <Folder className="h-4 w-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Save to folder</label>
-              <select
-                value={selectedFolderId ?? ''}
-                onChange={(e) => setSelectedFolderId(e.target.value === '' ? null : e.target.value)}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-              >
-                <option value="">📁 No folder (Uncategorized)</option>
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>📂 {f.name}</option>
+                  </span>
                 ))}
-              </select>
-            </div>
+              </div>
+            )}
+
+            {showTagInput && (
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      ref={tagInputRef}
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagKeyDown}
+                      placeholder="Type a tag and press Enter..."
+                      className="pl-9 h-8 text-sm"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleAddTag}
+                    disabled={!tagInput.trim()}
+                    className="h-8 w-8"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setShowTagInput(false)
+                      setTagInput('')
+                    }}
+                    className="h-8 w-8"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+
+                {tagInput && filteredSuggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md py-1">
+                    {filteredSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => {
+                          setTags([...tags, suggestion])
+                          setTagInput('')
+                        }}
+                        className="w-full px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2 transition-colors"
+                      >
+                        <Tag className="h-3 w-3 text-muted-foreground" />
+                        <span>{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex items-center justify-between px-5 py-4 border-t mt-4">
-        <p className="text-xs text-muted-foreground hidden sm:block">
-          Rich text formatting available
-        </p>
-        <Button
-          onClick={handlePost}
-          disabled={isPosting || !hasContent}
-          className="ml-auto"
-        >
-          {isPosting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              <Send className="h-4 w-4 mr-2" />
-              Post
-            </>
+
+      {/* Unified footer toolbar */}
+      <CardFooter className="flex flex-col gap-0 p-0 mt-2">
+        <div className="flex items-center gap-1 px-5 py-2 border-t w-full">
+          {/* Tag toggle button */}
+          <Button
+            type="button"
+            variant={showTagInput || tags.length > 0 ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setShowTagInput(!showTagInput)}
+            className="h-8 px-2.5 gap-1.5 text-xs"
+          >
+            <Tag className="h-3.5 w-3.5" />
+            {tags.length > 0 ? `${tags.length} tag${tags.length > 1 ? 's' : ''}` : 'Tags'}
+          </Button>
+
+          {/* Folder picker */}
+          {folders.length > 0 && !lockFolder && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant={selectedFolderId ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-8 px-2.5 gap-1.5 text-xs"
+                >
+                  <Folder className="h-3.5 w-3.5" />
+                  <span className="truncate max-w-[120px]">
+                    {selectedFolderId
+                      ? folders.find(f => f.id === selectedFolderId)?.name ?? 'Folder'
+                      : 'Folder'}
+                  </span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Save to folder</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setSelectedFolderId(null)}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <Inbox className="h-4 w-4 text-muted-foreground" />
+                  <span className="flex-1">Uncategorized</span>
+                  {selectedFolderId === null && <Check className="h-4 w-4 text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {folders.map((f) => (
+                  <DropdownMenuItem
+                    key={f.id}
+                    onClick={() => setSelectedFolderId(f.id)}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Folder className="h-4 w-4 text-primary" />
+                    <span className="flex-1 truncate">{f.name}</span>
+                    {selectedFolderId === f.id && <Check className="h-4 w-4 text-primary" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
-        </Button>
+
+          {/* Locked folder indicator */}
+          {lockFolder && defaultFolderId && folders.length > 0 && (
+            <div className="flex items-center gap-1.5 h-8 px-2.5 rounded-md bg-secondary text-secondary-foreground text-xs font-medium">
+              <Folder className="h-3.5 w-3.5" />
+              <span className="truncate max-w-[120px]">{folders.find(f => f.id === defaultFolderId)?.name ?? 'Folder'}</span>
+            </div>
+          )}
+
+          {/* Spacer + Post button */}
+          <div className="flex-1" />
+          <Button
+            onClick={handlePost}
+            disabled={isPosting || !hasContent}
+            size="sm"
+            className="h-8 px-4"
+          >
+            {isPosting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <>
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Post
+              </>
+            )}
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   )

@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { LogOut, UserPlus, Loader2, Shield, Users, Camera, X, Share2, Copy, Check, Globe, Lock, Inbox, User, Tag, ChevronDown, Search, FileText, HardDrive, Folder, FolderOpen, Plus } from 'lucide-react'
+import { LogOut, UserPlus, Loader2, Shield, Users, Camera, X, Share2, Copy, Check, Globe, Lock, Inbox, User, Tag, ChevronDown, Search, FileText, HardDrive, Folder } from 'lucide-react'
 import { NotificationBell } from '@/components/notification-bell'
 import { MediaDrive } from '@/components/media-drive'
 import { Input } from '@/components/ui/input'
@@ -102,17 +102,12 @@ export default function Home() {
   const [filterByUserId, setFilterByUserId] = useState<string | null>(null)
   const [filterByUserName, setFilterByUserName] = useState<string | null>(null)
   const [filterByTag, setFilterByTag] = useState<string | null>(null)
-  const [filterByFolderId, setFilterByFolderId] = useState<string | null>(null)
   const [allTags, setAllTags] = useState<TagWithCount[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
   const [tagSearchQuery, setTagSearchQuery] = useState('')
   const [showTagDropdown, setShowTagDropdown] = useState(false)
-  const [showFolderDropdown, setShowFolderDropdown] = useState(false)
-  const [newFolderName, setNewFolderName] = useState('')
-  const [creatingFolder, setCreatingFolder] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const tagDropdownRef = useRef<HTMLDivElement>(null)
-  const folderDropdownRef = useRef<HTMLDivElement>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   
   // Share state
@@ -143,16 +138,6 @@ export default function Home() {
     setFilterByTag(null)
   }
 
-  const handleFilterByFolder = (folderId: string | null) => {
-    setFilterByFolderId(folderId)
-    fetchPosts(null, false)
-  }
-
-  const handleClearFolderFilter = () => {
-    setFilterByFolderId(null)
-    fetchPosts(null, false)
-  }
-
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
@@ -171,14 +156,11 @@ export default function Home() {
   }, [session])
 
 
-  // Close tag and folder dropdowns when clicking outside
+  // Close tag dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (tagDropdownRef.current && !tagDropdownRef.current.contains(event.target as Node)) {
         setShowTagDropdown(false)
-      }
-      if (folderDropdownRef.current && !folderDropdownRef.current.contains(event.target as Node)) {
-        setShowFolderDropdown(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -212,10 +194,7 @@ export default function Home() {
       const params = new URLSearchParams()
       params.set('limit', '20')
       if (cursor) params.set('cursor', cursor)
-      if (activeTab === 'all' && filterByFolderId !== null) {
-        params.set('folderId', filterByFolderId === '' ? 'uncategorized' : filterByFolderId)
-      }
-      
+
       const res = await fetch(`/api/posts?${params.toString()}`)
       const data = await res.json()
       
@@ -285,28 +264,6 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to fetch folders:', error)
-    }
-  }
-
-  const createFolder = async () => {
-    const name = newFolderName.trim()
-    if (!name) return
-    setCreatingFolder(true)
-    try {
-      const res = await fetch('/api/folders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      })
-      if (res.ok) {
-        setNewFolderName('')
-        setShowFolderDropdown(false)
-        fetchFolders()
-      }
-    } catch (error) {
-      console.error('Failed to create folder:', error)
-    } finally {
-      setCreatingFolder(false)
     }
   }
 
@@ -635,6 +592,10 @@ export default function Home() {
                   Share Timeline
                   {isPublic && <Globe className="ml-auto h-3 w-3 text-green-500" />}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/folders')} className="cursor-pointer">
+                  <Folder className="mr-2 h-4 w-4" />
+                  Folders
+                </DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuItem onClick={() => router.push('/invite')} className="cursor-pointer">
@@ -705,130 +666,6 @@ export default function Home() {
               My Files
             </button>
           </div>
-
-          {/* Folder Filter Dropdown */}
-          {activeTab === 'all' && (
-            <div className="relative" ref={folderDropdownRef}>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFolderDropdown(!showFolderDropdown)}
-                className={`gap-2 ${filterByFolderId !== null ? 'border-primary bg-primary/5' : ''}`}
-              >
-                {filterByFolderId === null ? (
-                  <FolderOpen className="h-4 w-4" />
-                ) : (
-                  <Folder className="h-4 w-4" />
-                )}
-                {filterByFolderId === null
-                  ? 'All folders'
-                  : filterByFolderId === ''
-                    ? 'Uncategorized'
-                    : folders.find(f => f.id === filterByFolderId)?.name ?? 'Folder'}
-                <ChevronDown className={`h-3 w-3 transition-transform ${showFolderDropdown ? 'rotate-180' : ''}`} />
-              </Button>
-              {showFolderDropdown && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-popover border rounded-xl shadow-lg z-50 overflow-hidden">
-                  {/* Header */}
-                  <div className="px-3 py-2.5 border-b bg-muted/30">
-                    <div className="flex items-center gap-2">
-                      <Folder className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Filter by folder</span>
-                    </div>
-                  </div>
-
-                  {/* Default options */}
-                  <div className="py-1">
-                    <button
-                      onClick={() => { handleClearFolderFilter(); setShowFolderDropdown(false) }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors ${filterByFolderId === null ? 'bg-primary/10 text-primary' : ''}`}
-                    >
-                      <div className={`h-7 w-7 rounded-md flex items-center justify-center ${filterByFolderId === null ? 'bg-primary/20' : 'bg-muted'}`}>
-                        <FolderOpen className={`h-4 w-4 ${filterByFolderId === null ? 'text-primary' : 'text-muted-foreground'}`} />
-                      </div>
-                      <div className="flex-1">
-                        <span className="font-medium">All folders</span>
-                        <p className="text-xs text-muted-foreground">Show all posts</p>
-                      </div>
-                      {filterByFolderId === null && <Check className="h-4 w-4 text-primary" />}
-                    </button>
-                    <button
-                      onClick={() => { handleFilterByFolder(''); setShowFolderDropdown(false) }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors ${filterByFolderId === '' ? 'bg-primary/10 text-primary' : ''}`}
-                    >
-                      <div className={`h-7 w-7 rounded-md flex items-center justify-center ${filterByFolderId === '' ? 'bg-primary/20' : 'bg-muted'}`}>
-                        <Inbox className={`h-4 w-4 ${filterByFolderId === '' ? 'text-primary' : 'text-muted-foreground'}`} />
-                      </div>
-                      <div className="flex-1">
-                        <span className="font-medium">Uncategorized</span>
-                        <p className="text-xs text-muted-foreground">Posts without folder</p>
-                      </div>
-                      {filterByFolderId === '' && <Check className="h-4 w-4 text-primary" />}
-                    </button>
-                  </div>
-
-                  {/* Folders list */}
-                  {folders.length > 0 && (
-                    <>
-                      <div className="px-3 py-1.5 border-t border-b bg-muted/20">
-                        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Your Folders</span>
-                      </div>
-                      <div className="max-h-48 overflow-y-auto py-1">
-                        {folders.map((folder) => (
-                          <button
-                            key={folder.id}
-                            onClick={() => { handleFilterByFolder(folder.id); setShowFolderDropdown(false) }}
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors ${filterByFolderId === folder.id ? 'bg-primary/10 text-primary' : ''}`}
-                          >
-                            <div className={`h-7 w-7 rounded-md flex items-center justify-center ${filterByFolderId === folder.id ? 'bg-primary/20' : 'bg-muted'}`}>
-                              <Folder className={`h-4 w-4 ${filterByFolderId === folder.id ? 'text-primary' : 'text-muted-foreground'}`} />
-                            </div>
-                            <span className="flex-1 truncate font-medium">{folder.name}</span>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 font-normal">
-                              {folder._count.posts}
-                            </Badge>
-                            {filterByFolderId === folder.id && <Check className="h-4 w-4 text-primary shrink-0" />}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Create new folder */}
-                  <div className="p-2.5 border-t bg-muted/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground">Create new folder</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Folder name..."
-                        value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), createFolder())}
-                        className="h-8 text-sm bg-background"
-                      />
-                      <Button 
-                        size="sm" 
-                        className="h-8 px-3 shrink-0" 
-                        onClick={createFolder} 
-                        disabled={!newFolderName.trim() || creatingFolder}
-                      >
-                        {creatingFolder ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Tag Filter Dropdown */}
           {activeTab === 'all' && allTags.length > 0 && (
