@@ -190,16 +190,16 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
   ).slice(0, 5)
 
   return (
-    <Card className="mb-8 border bg-card shadow-sm">
-      <CardHeader className="pb-4 pt-5 px-5">
+    <Card className="mb-6 rounded-xl border border-border/60 bg-card shadow-none">
+      <CardHeader className="pb-3 pt-5 px-5">
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 border-2 border-border">
-            <AvatarFallback className="text-sm font-semibold bg-primary text-primary-foreground">
+          <Avatar className="h-9 w-9 border border-border">
+            <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
               {getInitials(userName)}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold text-foreground">{userName}</p>
+            <p className="font-medium text-foreground text-sm">{userName}</p>
             <p className="text-xs text-muted-foreground">Share your thoughts</p>
           </div>
         </div>
@@ -210,11 +210,11 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add a title (optional)"
-          className="text-lg font-semibold border-0 border-b rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
+          className="text-base font-medium border-0 border-b border-border/50 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary bg-transparent h-9"
         />
 
         {/* Content Editor */}
-        <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow w-full" style={{ width: '100%' }}>
+        <div className="rounded-lg border border-border/50 bg-muted/20 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring/50 focus-within:ring-offset-0 transition-shadow w-full" style={{ width: '100%' }}>
           {!mentionListReady ? (
             <div className="h-[140px] flex items-center justify-center text-muted-foreground bg-muted/30">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -316,18 +316,18 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
       </CardContent>
 
       {/* Unified footer toolbar */}
-      <CardFooter className="flex flex-col gap-0 p-0 mt-2">
-        <div className="flex items-center gap-1 px-5 py-2 border-t w-full">
-          {/* Tag toggle button */}
+      <CardFooter className="flex flex-col gap-0 p-0 mt-3 border-t border-border/50 bg-muted/20 rounded-b-xl">
+        <div className="flex items-center gap-3 px-5 py-3 w-full">
+          {/* Tag toggle */}
           <Button
             type="button"
-            variant={showTagInput || tags.length > 0 ? "secondary" : "ghost"}
+            variant="ghost"
             size="sm"
             onClick={() => setShowTagInput(!showTagInput)}
-            className="h-8 px-2.5 gap-1.5 text-xs"
+            className="h-8 px-3 gap-2 text-muted-foreground hover:text-foreground rounded-md"
           >
-            <Tag className="h-3.5 w-3.5" />
-            {tags.length > 0 ? `${tags.length} tag${tags.length > 1 ? 's' : ''}` : 'Tags'}
+            <Tag className="h-4 w-4" />
+            <span className="text-sm">{tags.length > 0 ? `${tags.length} tag${tags.length > 1 ? 's' : ''}` : 'Tags'}</span>
           </Button>
 
           {/* Folder picker */}
@@ -336,17 +336,17 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
               <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
-                  variant={selectedFolderId ? "secondary" : "ghost"}
+                  variant="ghost"
                   size="sm"
-                  className="h-8 px-2.5 gap-1.5 text-xs"
+                  className="h-8 px-3 gap-2 text-muted-foreground hover:text-foreground rounded-md"
                 >
-                  <Folder className="h-3.5 w-3.5" />
-                  <span className="truncate max-w-[120px]">
+                  <Folder className="h-4 w-4" />
+                  <span className="text-sm truncate max-w-[140px]">
                     {selectedFolderId
                       ? folders.find(f => f.id === selectedFolderId)?.name ?? 'Folder'
                       : 'Folder'}
                   </span>
-                  <ChevronDown className="h-3 w-3 opacity-60" />
+                  <ChevronDown className="h-3.5 w-3.5 opacity-70" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
@@ -378,25 +378,25 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
 
           {/* Locked folder indicator */}
           {lockFolder && defaultFolderId && folders.length > 0 && (
-            <div className="flex items-center gap-1.5 h-8 px-2.5 rounded-md bg-secondary text-secondary-foreground text-xs font-medium">
-              <Folder className="h-3.5 w-3.5" />
-              <span className="truncate max-w-[120px]">{folders.find(f => f.id === defaultFolderId)?.name ?? 'Folder'}</span>
+            <div className="flex items-center gap-2 h-8 px-3 rounded-md text-muted-foreground text-sm">
+              <Folder className="h-4 w-4" />
+              <span className="truncate max-w-[140px]">{folders.find(f => f.id === defaultFolderId)?.name ?? 'Folder'}</span>
             </div>
           )}
 
           {/* Spacer + Post button */}
-          <div className="flex-1" />
+          <div className="flex-1 min-w-4" />
           <Button
             onClick={handlePost}
             disabled={isPosting || !hasContent}
             size="sm"
-            className="h-8 px-4"
+            className="h-8 px-4 rounded-md gap-2"
           >
             {isPosting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <Send className="h-3.5 w-3.5 mr-1.5" />
+                <Send className="h-4 w-4" />
                 Post
               </>
             )}

@@ -626,59 +626,59 @@ export default function Home() {
           />
         )}
 
-        {/* Tab Navigation */}
-        <div className="flex items-center justify-between gap-2 mb-6 border-b">
-          <div className="flex items-center gap-2">
+        {/* Tab Navigation — thin separator between composer and tabs */}
+        <div className="flex items-center justify-between gap-4 border-b border-border mt-6 mb-0">
+          <div className="flex items-center gap-0">
             <button
               onClick={() => setActiveTab('all')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 activeTab === 'all'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Users className="h-4 w-4" />
+              <Users className="h-4 w-4 shrink-0" />
               All Posts
-              <Badge variant="secondary" className="ml-1 font-normal tabular-nums">
+              <Badge variant="secondary" className="ml-1 font-normal tabular-nums text-xs px-1.5">
                 {totalPostCount}
               </Badge>
             </button>
             <button
               onClick={() => setActiveTab('shared')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 activeTab === 'shared'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Inbox className="h-4 w-4" />
+              <Inbox className="h-4 w-4 shrink-0" />
               Shared with Me
             </button>
             <button
               onClick={() => setActiveTab('files')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 activeTab === 'files'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <HardDrive className="h-4 w-4" />
+              <HardDrive className="h-4 w-4 shrink-0" />
               My Files
             </button>
           </div>
 
           {/* Tag Filter Dropdown */}
           {activeTab === 'all' && allTags.length > 0 && (
-            <div className="relative" ref={tagDropdownRef}>
+            <div className="relative pb-2" ref={tagDropdownRef}>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowTagDropdown(!showTagDropdown)}
-                className={`gap-2 ${filterByTag ? 'border-primary bg-primary/5' : ''}`}
+                className={`h-8 gap-2 rounded-md text-sm ${filterByTag ? 'border-primary/60 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 <Tag className="h-4 w-4" />
                 {filterByTag || 'Filter by tag'}
-                <ChevronDown className={`h-3 w-3 transition-transform ${showTagDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showTagDropdown ? 'rotate-180' : ''}`} />
               </Button>
 
               {showTagDropdown && (

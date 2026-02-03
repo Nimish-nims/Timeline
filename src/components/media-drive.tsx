@@ -44,8 +44,10 @@ import {
   Check,
   ChevronDown,
   Search,
+  AlertCircle,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -167,6 +169,9 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [dragOver, setDragOver] = useState(false)
 
+  // Media storage not configured (e.g. missing Supabase env on Vercel)
+  const [storageUnavailable, setStorageUnavailable] = useState(false)
+
   // Dialog state
   const [previewFile, setPreviewFile] = useState<MediaFileItem | null>(null)
   const [shareDialogFile, setShareDialogFile] = useState<MediaFileItem | null>(null)
@@ -194,7 +199,13 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
       if (cursor) params.set("cursor", cursor)
       const res = await fetch(`/api/media?${params.toString()}`)
       const data = await res.json()
+      if (res.status === 503 && (data?.error === "Media storage not configured" || data?.error?.toLowerCase().includes("not configured"))) {
+        setStorageUnavailable(true)
+        if (!append) setFiles([])
+        return
+      }
       if (data.files && Array.isArray(data.files)) {
+        setStorageUnavailable(false)
         if (append) setFiles((prev) => [...prev, ...data.files])
         else setFiles(data.files)
         setNextCursor(data.nextCursor)
@@ -310,8 +321,13 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
       const data = await res.json()
 
       if (!res.ok) {
-        const msg = data?.error || res.statusText || "Upload failed"
-        alert(msg)
+        if (res.status === 503 && (data?.error === "Media storage not configured" || data?.error?.toLowerCase().includes("not configured"))) {
+          setStorageUnavailable(true)
+          // No alert — we show an in-app message instead
+        } else {
+          const msg = data?.error || res.statusText || "Upload failed"
+          alert(msg)
+        }
         return
       }
 
@@ -629,8 +645,26 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
 
   return (
     <div className="space-y-6">
-      {/* Upload Area (only on My Files tab) */}
-      {activeSubTab === "my-files" && (
+      {/* Storage not configured — friendly in-app message */}
+      {activeSubTab === "my-files" && storageUnavailable && (
+        <Card className="border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10">
+          <CardContent className="flex items-start gap-3 p-4">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-foreground">Media storage is not configured</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                File uploads are disabled because storage is not set up for this deployment. In Vercel, add:{" "}
+                <code className="text-xs bg-muted px-1 py-0.5 rounded">NEXT_PUBLIC_SUPABASE_URL</code> (Supabase Project URL) and{" "}
+                <code className="text-xs bg-muted px-1 py-0.5 rounded">SUPABASE_SERVICE_ROLE_KEY</code> (use the{" "}
+                <strong>service_role</strong> key from Supabase → Project Settings → API, not the anon key). Then redeploy.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Upload Area (only on My Files tab; hidden when storage unavailable) */}
+      {activeSubTab === "my-files" && !storageUnavailable && (
         <div
           className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
             dragOver
