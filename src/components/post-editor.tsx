@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
-import { Send, Loader2, X, Tag, Plus } from 'lucide-react'
+import { Send, Loader2, X, Tag, Plus, Folder } from 'lucide-react'
 import { useMentionMenuAvatars, type MemberForMention } from '@/lib/mention-menu-avatars'
 
 const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
@@ -19,8 +19,15 @@ const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
   )
 })
 
+interface FolderOption {
+  id: string
+  name: string
+  _count: { posts: number }
+}
+
 interface PostEditorProps {
-  onPost: (content: string, tags: string[], title?: string) => void
+  onPost: (content: string, tags: string[], title?: string, folderId?: string | null) => void
+  folders?: FolderOption[]
 }
 
 function getInitials(name: string): string {
@@ -32,7 +39,7 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function PostEditor({ onPost }: PostEditorProps) {
+export function PostEditor({ onPost, folders = [] }: PostEditorProps) {
   const { data: session } = useSession()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -41,6 +48,7 @@ export function PostEditor({ onPost }: PostEditorProps) {
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [showTagInput, setShowTagInput] = useState(false)
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [suggestedTags, setSuggestedTags] = useState<string[]>([])
   const [mentionUserList, setMentionUserList] = useState<string[]>([])
   const [membersForMentions, setMembersForMentions] = useState<MemberForMention[]>([])
@@ -143,7 +151,7 @@ export function PostEditor({ onPost }: PostEditorProps) {
 
     setIsPosting(true)
     try {
-      onPost(content, tags, title.trim() || undefined)
+      onPost(content, tags, title.trim() || undefined, selectedFolderId)
       setTitle('')
       setContent('')
       setTags([])
@@ -297,6 +305,28 @@ export function PostEditor({ onPost }: PostEditorProps) {
             </Button>
           )}
         </div>
+
+        {/* Folder selector */}
+        {folders.length > 0 && (
+          <div className="mt-3 flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+            <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+              <Folder className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Save to folder</label>
+              <select
+                value={selectedFolderId ?? ''}
+                onChange={(e) => setSelectedFolderId(e.target.value === '' ? null : e.target.value)}
+                className="w-full h-8 rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+              >
+                <option value="">📁 No folder (Uncategorized)</option>
+                {folders.map((f) => (
+                  <option key={f.id} value={f.id}>📂 {f.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex items-center justify-between px-5 py-4 border-t mt-4">
         <p className="text-xs text-muted-foreground hidden sm:block">

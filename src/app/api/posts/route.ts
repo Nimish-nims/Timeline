@@ -7,90 +7,78 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const tag = searchParams.get('tag')
+    const folderIdParam = searchParams.get('folderId')
     const cursor = searchParams.get('cursor')
     const limitParam = searchParams.get('limit')
     const limit = Math.min(Math.max(parseInt(limitParam || '20', 10) || 20, 1), 50)
 
-    // Build where clause
-    const where = tag ? {
-      tags: {
-        some: {
-          name: tag.toLowerCase()
-        }
+    // When filtering by folder, require auth and restrict to current user's folder/posts
+    let folderWhere: Record<string, unknown> | undefined
+    if (folderIdParam === 'uncategorized' || folderIdParam === '') {
+      const session = await auth()
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       }
-    } : undefined
+      folderWhere = { folderId: null, authorId: session.user.id }
+    } else if (folderIdParam) {
+      const session = await auth()
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+      const folder = await prisma.folder.findFirst({
+        where: { id: folderIdParam, userId: session.user.id }
+      })
+      if (!folder) {
+        return NextResponse.json({ error: "Folder not found" }, { status: 404 })
+      }
+      folderWhere = { folderId: folderIdParam }
+    }
+
+    // Build where clause (tag + folder)
+    const where = {
+      ...(tag ? {
+        tags: {
+          some: {
+            name: tag.toLowerCase()
+          }
+        }
+      } : {}),
+      ...(folderWhere || {})
+    }
+    const hasWhere = Object.keys(where).length > 0
+    const finalWhere = hasWhere ? where : undefined
 
     // Get total count for display
     let totalCount = 0
     try {
-      totalCount = await prisma.post.count({ where })
+      totalCount = await prisma.post.count({ where: finalWhere })
     } catch {
       // If count fails, continue without it
     }
 
-    // First, try to get posts with all relations
-    // If that fails, fall back to a simpler query
+    // First, try to get posts with all relations (folder include may be typed as never if client is stale)
     let posts
     try {
-      posts = await prisma.post.findMany({
-        where,
-        take: limit + 1, // Fetch one extra to check if there are more
-        ...(cursor && {
-          skip: 1, // Skip the cursor itself
-          cursor: { id: cursor }
-        }),
+      const findManyArgs = {
+        where: finalWhere,
+        take: limit + 1,
+        ...(cursor && { skip: 1, cursor: { id: cursor } }),
         include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            }
-          },
-          tags: {
-            select: {
-              id: true,
-              name: true,
-            }
-          },
-          shares: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                }
-              }
-            }
-          },
-          mentions: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true,
-                }
-              }
-            }
-          },
-          _count: {
-            select: { comments: true }
-          }
+          author: { select: { id: true, name: true, email: true, image: true } },
+          tags: { select: { id: true, name: true } },
+          shares: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
+          mentions: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
+          _count: { select: { comments: true } },
+          folder: true
         },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      })
+        orderBy: { createdAt: 'desc' as const }
+      }
+      posts = await prisma.post.findMany(findManyArgs as Parameters<typeof prisma.post.findMany>[0])
     } catch (relationError) {
       // Fallback: try without relations if they don't exist yet
       console.warn("Failed to fetch with relations, trying simple query:", relationError)
       posts = await prisma.post.findMany({
-        where,
+        where: finalWhere,
         take: limit + 1,
         ...(cursor && {
           skip: 1,
@@ -110,12 +98,13 @@ export async function GET(request: NextRequest) {
           createdAt: 'desc'
         }
       })
-      // Add empty arrays for missing relations
+      // Add empty arrays and folder for missing relations
       posts = posts.map(post => ({
         ...post,
         tags: [],
         shares: [],
         mentions: [],
+        folder: null as { id: string; name: string } | null,
         _count: { comments: 0 }
       }))
     }
@@ -154,10 +143,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { title, content, tags } = await request.json()
+    const { title, content, tags, folderId: requestFolderId } = await request.json()
 
     if (!content) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 })
+    }
+
+    // Validate folderId if provided
+    let folderId: string | null = null
+    if (requestFolderId != null && requestFolderId !== '') {
+      const folder = await prisma.folder.findFirst({
+        where: { id: requestFolderId, userId: session.user.id }
+      })
+      if (!folder) {
+        return NextResponse.json({ error: "Folder not found" }, { status: 400 })
+      }
+      folderId = folder.id
     }
 
     // Process tags - create if they don't exist
@@ -183,6 +184,7 @@ export async function POST(request: NextRequest) {
         title: title?.trim() || null,
         content,
         authorId: session.user.id,
+        folderId,
         tags: {
           connect: tagConnections
         }

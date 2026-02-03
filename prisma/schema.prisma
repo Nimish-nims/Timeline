@@ -26,6 +26,25 @@ model User {
   postMentions  PostMention[] @relation("MentionedIn")
   notificationsReceived Notification[] @relation("NotificationsReceived")
   notificationsSent     Notification[] @relation("NotificationsSent")
+  mediaFiles    MediaFile[]  @relation("UserMediaFiles")
+  sharedMedia   MediaShare[] @relation("SharedMediaFiles")
+  folders       Folder[]
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Folder?  @relation("FolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Folder[] @relation("FolderChildren")
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, parentId])
 }
 
 model Post {
@@ -34,6 +53,8 @@ model Post {
   content   String
   authorId  String
   author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  folderId  String?
+  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   comments  Comment[]
@@ -130,4 +151,32 @@ model Notification {
 
   @@index([userId])
   @@index([userId, read])
+}
+
+model MediaFile {
+  id           String       @id @default(cuid())
+  fileName     String
+  fileSize     Int
+  mimeType     String
+  storageKey   String       @unique
+  thumbnailUrl String?
+  uploaderId   String
+  uploader     User         @relation("UserMediaFiles", fields: [uploaderId], references: [id], onDelete: Cascade)
+  shares       MediaShare[]
+  createdAt    DateTime     @default(now())
+
+  @@index([uploaderId])
+  @@index([uploaderId, createdAt])
+}
+
+model MediaShare {
+  id          String    @id @default(cuid())
+  mediaFileId String
+  mediaFile   MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("SharedMediaFiles", fields: [userId], references: [id], onDelete: Cascade)
+  sharedAt    DateTime  @default(now())
+
+  @@unique([mediaFileId, userId])
+  @@index([userId])
 }

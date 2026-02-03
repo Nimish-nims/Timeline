@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Trash2, Pencil, X, Check, Clock, Loader2, MessageSquare, Send, ChevronDown, ChevronUp, Tag, Plus, Share2, Users, Maximize2, User } from 'lucide-react'
+import { Trash2, Pencil, X, Check, Clock, Loader2, MessageSquare, Send, ChevronDown, ChevronUp, Tag, Plus, Share2, Users, Maximize2, User, Folder } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
   Dialog,
@@ -68,9 +68,17 @@ interface Post {
   tags?: Tag[]
   shares?: { user: SharedUser }[]
   mentions?: { user: SharedUser }[]
+  folderId?: string | null
+  folder?: { id: string; name: string } | null
   _count?: {
     comments: number
   }
+}
+
+interface FolderOption {
+  id: string
+  name: string
+  _count: { posts: number }
 }
 
 interface Member {
@@ -83,7 +91,8 @@ interface Member {
 interface TimelineProps {
   posts: Post[]
   onDelete: (id: string) => void
-  onEdit: (id: string, content: string, tags?: string[]) => void
+  onEdit: (id: string, content: string, tags?: string[], folderId?: string | null) => void
+  folders?: FolderOption[]
   onSharePost?: (postId: string, userIds: string[]) => Promise<void>
   onUnsharePost?: (postId: string, userId: string) => Promise<void>
   currentUserId?: string
@@ -184,6 +193,7 @@ export function Timeline({
   posts,
   onDelete,
   onEdit,
+  folders = [],
   onSharePost,
   onUnsharePost,
   currentUserId,
@@ -200,6 +210,7 @@ export function Timeline({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
   const [editTags, setEditTags] = useState<string[]>([])
+  const [editFolderId, setEditFolderId] = useState<string | null>(null)
   const [tagInput, setTagInput] = useState('')
   const [showTagInput, setShowTagInput] = useState<string | null>(null)
   const [suggestedTags, setSuggestedTags] = useState<string[]>([])
@@ -426,22 +437,25 @@ export function Timeline({
     setEditingId(post.id)
     setEditContent(post.content)
     setEditTags(post.tags?.map(t => t.name) || [])
+    setEditFolderId(post.folderId ?? null)
   }
 
   const handleCancelEdit = () => {
     setEditingId(null)
     setEditContent('')
     setEditTags([])
+    setEditFolderId(null)
     setTagInput('')
     setShowTagInput(null)
   }
 
   const handleSaveEdit = () => {
     if (editingId && editContent.replace(/<[^>]*>/g, '').trim()) {
-      onEdit(editingId, editContent, editTags)
+      onEdit(editingId, editContent, editTags, editFolderId)
       setEditingId(null)
       setEditContent('')
       setEditTags([])
+      setEditFolderId(null)
     }
   }
 
@@ -813,6 +827,28 @@ export function Timeline({
                           )}
                         </div>
                       </div>
+
+                      {/* Folder selector when editing */}
+                      {folders.length > 0 && (
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                          <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                            <Folder className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Move to folder</label>
+                            <select
+                              value={editFolderId ?? ''}
+                              onChange={(e) => setEditFolderId(e.target.value === '' ? null : e.target.value)}
+                              className="w-full h-8 rounded-md border border-input bg-background px-2 py-1 text-sm cursor-pointer"
+                            >
+                              <option value="">📁 No folder (Uncategorized)</option>
+                              {folders.map((f) => (
+                                <option key={f.id} value={f.id}>📂 {f.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <>

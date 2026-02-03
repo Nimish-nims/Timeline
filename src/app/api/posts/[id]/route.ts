@@ -15,7 +15,7 @@ export async function PUT(
     }
 
     const { id } = await params
-    const { title, content, tags } = await request.json()
+    const { title, content, tags, folderId: requestFolderId } = await request.json()
 
     const post = await prisma.post.findUnique({
       where: { id }
@@ -39,6 +39,22 @@ export async function PUT(
       }
     })
 
+    // Validate folderId if provided
+    let folderId: string | null | undefined = undefined
+    if (requestFolderId !== undefined) {
+      if (requestFolderId == null || requestFolderId === '') {
+        folderId = null
+      } else {
+        const folder = await prisma.folder.findFirst({
+          where: { id: requestFolderId, userId: session.user.id }
+        })
+        if (!folder) {
+          return NextResponse.json({ error: "Folder not found" }, { status: 400 })
+        }
+        folderId = folder.id
+      }
+    }
+
     // Process tags if provided
     const tagConnections = []
     if (tags && Array.isArray(tags)) {
@@ -61,6 +77,7 @@ export async function PUT(
       data: {
         ...(title !== undefined && { title: title?.trim() || null }),
         content,
+        ...(folderId !== undefined && { folderId }),
         ...(tags !== undefined && {
           tags: {
             set: tagConnections
