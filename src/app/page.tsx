@@ -64,6 +64,7 @@ interface Post {
   }
   tags?: TagType[]
   shares?: { user: SharedUser }[]
+  mentions?: { user: SharedUser }[]
   folderId?: string | null
   folder?: { id: string; name: string } | null
   _count?: {
