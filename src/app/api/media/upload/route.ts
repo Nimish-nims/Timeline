@@ -5,6 +5,9 @@ import { supabase, MEDIA_BUCKET, MAX_FILE_SIZE, isAllowedMimeType, getPublicUrl 
 
 export async function POST(request: NextRequest) {
   try {
+    if (!supabase) {
+      return NextResponse.json({ error: "Media storage not configured" }, { status: 503 })
+    }
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

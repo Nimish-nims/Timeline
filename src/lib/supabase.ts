@@ -1,14 +1,15 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-})
+/** Only created when env vars are set; null during build or when not configured. */
+export const supabase: SupabaseClient | null =
+  typeof supabaseUrl === 'string' && supabaseUrl.length > 0 && typeof supabaseServiceKey === 'string' && supabaseServiceKey.length > 0
+    ? createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : null
 
 export const MEDIA_BUCKET = 'media'
 
@@ -42,6 +43,7 @@ export function isAllowedMimeType(mimeType: string): boolean {
 }
 
 export function getPublicUrl(storageKey: string): string {
+  if (!supabase) throw new Error('Supabase not configured')
   const { data } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(storageKey)
   return data.publicUrl
 }
