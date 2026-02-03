@@ -230,7 +230,14 @@ export default function FolderViewPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
+        <div className="container mx-auto max-w-7xl px-6 py-3 flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
+              <span className="text-primary-foreground font-bold">T</span>
+            </div>
+            <span className="text-xl font-bold tracking-tight hidden sm:inline">Timeline</span>
+          </Link>
+          <Separator orientation="vertical" className="h-6" />
           <Button variant="ghost" size="icon" asChild>
             <Link href="/folders">
               <ArrowLeft className="h-4 w-4" />
@@ -258,7 +265,7 @@ export default function FolderViewPage() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-3xl px-4 py-8">
+      <main className="container mx-auto max-w-7xl px-6 py-8">
         <PostEditor
           onPost={handlePost}
           folders={folders}

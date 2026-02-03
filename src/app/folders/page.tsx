@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Folder, FolderOpen, Inbox, Plus, Loader2, ArrowLeft, ChevronRight, FolderPlus } from 'lucide-react'
+import { Folder, FolderOpen, Inbox, Plus, Loader2, ChevronRight, FolderPlus } from 'lucide-react'
 
 interface FolderItem {
   id: string
@@ -93,13 +93,13 @@ export default function FoldersPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Back to Timeline</span>
-            </Link>
-          </Button>
+        <div className="container mx-auto max-w-7xl px-6 py-3 flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
+              <span className="text-primary-foreground font-bold">T</span>
+            </div>
+            <span className="text-xl font-bold tracking-tight hidden sm:inline">Timeline</span>
+          </Link>
           <Separator orientation="vertical" className="h-6" />
           <div className="flex-1 flex items-center gap-2">
             <FolderOpen className="h-5 w-5 text-primary" />
@@ -113,7 +113,7 @@ export default function FoldersPage() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-3xl px-4 py-6">
+      <main className="container mx-auto max-w-7xl px-6 py-6">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
