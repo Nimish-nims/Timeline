@@ -4,16 +4,22 @@ import { Resend } from "resend"
 import crypto from "crypto"
 
 // Force dynamic rendering - never statically generate
-export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 export async function POST(request: Request) {
   try {
     const { email } = await request.json()
 
-    if (!email) {
+    if (!email || typeof email !== "string") {
+      return NextResponse.json(
+        { error: "Email is required" },
+        { status: 400 }
+      )
+    }
+
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail) {
       return NextResponse.json(
         { error: "Email is required" },
         { status: 400 }
@@ -22,7 +28,7 @@ export async function POST(request: Request) {
 
     // Check if user exists
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: trimmedEmail },
     })
 
     // Always return success to prevent email enumeration
@@ -38,31 +44,37 @@ export async function POST(request: Request) {
 
     // Delete any existing reset tokens for this email
     await prisma.passwordReset.deleteMany({
-      where: { email },
+      where: { email: trimmedEmail },
     })
 
     // Create new reset token
     await prisma.passwordReset.create({
       data: {
-        email,
+        email: trimmedEmail,
         token,
         expiresAt,
       },
     })
 
-    // Get the base URL from environment or request
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-      request.headers.get("origin") || 
-      "http://localhost:3000"
-    
-    const resetLink = `${baseUrl}/reset-password?token=${token}`
+    // Build reset link (path only; frontend can prepend origin)
+    const resetPath = `/reset-password?token=${token}`
 
-    // Send email using Resend
-    await resend.emails.send({
-      from: "Timeline <onboarding@resend.dev>",
-      to: email,
-      subject: "Reset Your Password",
-      html: `
+    // Try to send email via Resend when configured
+    const resendApiKey = process.env.RESEND_API_KEY
+    if (resendApiKey && resendApiKey.length > 0) {
+      try {
+        const resend = new Resend(resendApiKey)
+        const baseUrl =
+          process.env.NEXT_PUBLIC_APP_URL ||
+          request.headers.get("origin") ||
+          "http://localhost:3000"
+        const resetLink = `${baseUrl}${resetPath}`
+
+        await resend.emails.send({
+          from: "Timeline <onboarding@resend.dev>",
+          to: trimmedEmail,
+          subject: "Reset Your Password",
+          html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Password Reset Request</h2>
           <p>Hi ${user.name},</p>
@@ -82,10 +94,18 @@ export async function POST(request: Request) {
           <p style="color: #999; font-size: 12px;">Timeline App</p>
         </div>
       `,
-    })
+        })
+      } catch (sendError) {
+        console.error("Forgot password: email send failed", sendError)
+        // Don't fail the request; return link so user can still reset
+      }
+    }
 
+    // Always return success and the reset path when we created a token, so the UI can show the link
+    // when email isn't configured or failed (e.g. no RESEND_API_KEY on Vercel)
     return NextResponse.json({
       message: "If an account exists with this email, you will receive a password reset link.",
+      resetLink: resetPath,
     })
   } catch (error) {
     console.error("Forgot password error:", error)
