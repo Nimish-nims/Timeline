@@ -181,13 +181,7 @@ export default function FolderViewPage() {
   )
 
   const handleEdit = useCallback(
-    async (
-      postId: string,
-      content: string,
-      tags: string[],
-      title?: string,
-      editFolderId?: string | null
-    ) => {
+    async (postId: string, content: string, tags?: string[], folderId?: string | null) => {
       const targetFolderId = isUncategorized ? null : id
       try {
         const res = await fetch(`/api/posts/${postId}`, {
@@ -195,9 +189,8 @@ export default function FolderViewPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             content,
-            tags: tags.map((t) => t.toLowerCase()),
-            title: title || undefined,
-            folderId: editFolderId !== undefined ? editFolderId : targetFolderId,
+            tags: (tags ?? []).map((t) => t.toLowerCase()),
+            folderId: folderId !== undefined ? folderId : targetFolderId,
           }),
         })
         if (!res.ok) throw new Error('Failed to update post')
@@ -221,8 +214,8 @@ export default function FolderViewPage() {
     [fetchPosts]
   )
 
-  const handleSharePost = useCallback(() => {}, [])
-  const handleUnsharePost = useCallback(() => {}, [])
+  const handleSharePost = useCallback(async (_postId: string, _userIds: string[]) => {}, [])
+  const handleUnsharePost = useCallback(async (_postId: string, _userId: string) => {}, [])
 
   if (status === 'loading' || !session) {
     return (
