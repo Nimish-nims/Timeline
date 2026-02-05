@@ -373,7 +373,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
       <div className="min-h-screen bg-muted/30">
         {/* Minimal Header */}
         <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
+          <div className="mx-auto flex h-14 max-w-[90rem] items-center justify-between px-6">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => router.back()}>
                 <ChevronLeft className="h-4 w-4 mr-1" />
@@ -395,7 +395,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl px-6 py-8">
+        <main className="mx-auto max-w-[90rem] px-6 py-8">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -733,62 +733,84 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
 
         {/* History Dialog */}
         <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-          <DialogContent className="w-[95vw] max-w-4xl h-[80vh] max-h-[700px] p-0 gap-0 overflow-hidden flex flex-col">
-            <div className="flex items-center gap-3 px-5 py-4 border-b shrink-0 bg-background">
-              <History className="h-5 w-5 text-muted-foreground" />
-              <DialogTitle className="text-lg font-semibold">Version History</DialogTitle>
-              {history.length > 0 && (
-                <Badge variant="secondary">{history.length}</Badge>
-              )}
+          <DialogContent className="w-[95vw] max-w-5xl h-[85vh] max-h-[800px] p-0 gap-0 overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b shrink-0 bg-background">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                  <History className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-semibold">Version History</DialogTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {history.length} {history.length === 1 ? 'version' : 'versions'} saved
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-1 min-h-0 overflow-hidden">
-              {/* Version List */}
-              <div className="w-64 shrink-0 border-r bg-muted/20 overflow-y-auto">
-                {loadingHistory ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : history.length === 0 ? (
-                  <div className="text-center py-12 px-4">
-                    <History className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No edit history</p>
-                  </div>
-                ) : (
-                  <div className="p-2 space-y-1">
-                    {history.map((entry, i) => {
-                      const selected = previewEntry?.id === entry.id
-                      return (
-                        <button
-                          key={entry.id}
-                          onClick={() => setPreviewEntry(entry)}
-                          className={`w-full text-left p-3 rounded-md transition-colors ${
-                            selected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-medium text-sm">Version {history.length - i}</span>
-                            <span className={`text-xs ${selected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                              {formatRelativeDate(new Date(entry.editedAt))}
-                            </span>
-                          </div>
-                          <p className={`text-xs truncate ${selected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                            {entry.content.replace(/<[^>]*>/g, '').slice(0, 45)}...
-                          </p>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
+              {/* Version List - Sidebar */}
+              <div className="w-56 shrink-0 border-r bg-muted/30 flex flex-col">
+                <div className="px-3 py-2 border-b bg-muted/50">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Versions</p>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {loadingHistory ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : history.length === 0 ? (
+                    <div className="text-center py-12 px-4">
+                      <History className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No edit history</p>
+                    </div>
+                  ) : (
+                    <div className="p-2 space-y-1">
+                      {history.map((entry, i) => {
+                        const selected = previewEntry?.id === entry.id
+                        const versionNum = history.length - i
+                        return (
+                          <button
+                            key={entry.id}
+                            onClick={() => setPreviewEntry(entry)}
+                            className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                              selected 
+                                ? 'bg-primary text-primary-foreground shadow-sm' 
+                                : 'hover:bg-muted/80'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium text-sm">Version {versionNum}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                selected 
+                                  ? 'bg-primary-foreground/20 text-primary-foreground' 
+                                  : 'bg-muted text-muted-foreground'
+                              }`}>
+                                {formatRelativeDate(new Date(entry.editedAt))}
+                              </span>
+                            </div>
+                            <p className={`text-xs mt-1 line-clamp-1 ${
+                              selected ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                            }`}>
+                              {entry.content.replace(/<[^>]*>/g, '').slice(0, 40)}...
+                            </p>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Preview */}
-              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+              {/* Preview Panel */}
+              <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
                 {previewEntry ? (
                   <>
-                    <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
+                    {/* Preview Header */}
+                    <div className="px-6 py-3 border-b bg-muted/20 flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="font-medium">
                           Version {history.findIndex(h => h.id === previewEntry.id) !== -1
                             ? history.length - history.findIndex(h => h.id === previewEntry.id)
                             : ''}
@@ -797,23 +819,36 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                           {formatShortDate(new Date(previewEntry.editedAt))}
                         </span>
                       </div>
-                      <Button size="sm" onClick={() => handleRestore(previewEntry.id)} disabled={restoringId === previewEntry.id}>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleRestore(previewEntry.id)} 
+                        disabled={restoringId === previewEntry.id}
+                        className="gap-1.5"
+                      >
                         {restoringId === previewEntry.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                          <RotateCcw className="h-4 w-4 mr-1" />
+                          <RotateCcw className="h-3.5 w-3.5" />
                         )}
                         Restore
                       </Button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-5">
-                      <div className="rounded-lg border bg-card p-5">
+                    {/* Preview Content */}
+                    <div className="flex-1 overflow-y-auto p-6">
+                      <div className="rounded-xl border bg-card p-6 shadow-sm">
                         <LinkPreviewHover
                           apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
                           enabled={true}
                         >
                           <div
-                            className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
+                            className="prose prose-sm dark:prose-invert max-w-none 
+                              [&>p]:mb-3 [&>p:last-child]:mb-0
+                              [&_table]:w-full [&_table]:border-collapse [&_table]:my-4
+                              [&_th]:bg-muted/50 [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-medium [&_th]:text-sm
+                              [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:text-sm [&_td]:bg-transparent
+                              [&_tr]:bg-transparent [&_tr:hover]:bg-muted/30
+                              [&_thead]:bg-transparent [&_tbody]:bg-transparent
+                              [&_*]:!bg-transparent [&_td]:!bg-transparent [&_th]:!bg-muted/50"
                             dangerouslySetInnerHTML={{ __html: previewEntry.content }}
                           />
                         </LinkPreviewHover>
@@ -822,9 +857,11 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                   </>
                 ) : (
                   <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                    <History className="h-12 w-12 text-muted-foreground/30 mb-3" />
-                    <p className="font-medium">Select a version</p>
-                    <p className="text-sm text-muted-foreground">Click a version to preview</p>
+                    <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                      <History className="h-7 w-7 text-muted-foreground/50" />
+                    </div>
+                    <p className="font-medium text-foreground">Select a version to preview</p>
+                    <p className="text-sm text-muted-foreground mt-1">Click any version from the list on the left</p>
                   </div>
                 )}
               </div>

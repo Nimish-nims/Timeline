@@ -572,7 +572,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <div className="container mx-auto flex h-16 max-w-[90rem] items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
               <span className="text-primary-foreground font-bold">T</span>
@@ -699,7 +699,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-7xl px-6 py-8">
+      <main className="container mx-auto max-w-[90rem] px-6 py-8">
         {activeTab !== 'files' && (
           <PostEditor
             onPost={handlePost}
@@ -708,7 +708,7 @@ export default function Home() {
         )}
 
         {/* Tab Navigation — thin separator between composer and tabs */}
-        <div className="flex items-center justify-between gap-4 border-b border-border mt-6 mb-0">
+        <div className="flex items-center justify-between gap-4 border-b border-border mt-6 mb-6">
           <div className="flex items-center gap-0">
             <button
               onClick={() => setActiveTab('all')}
@@ -895,7 +895,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t py-8 mt-auto bg-muted/30">
-        <div className="container mx-auto max-w-6xl px-6">
+        <div className="container mx-auto max-w-[90rem] px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center">
