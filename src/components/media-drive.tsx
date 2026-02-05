@@ -45,9 +45,10 @@ import {
   ChevronDown,
   Search,
   AlertCircle,
+  CalendarDays,
+  Plus,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -143,12 +144,144 @@ function formatDate(dateStr: string): string {
   })
 }
 
+function groupFilesByDate(files: MediaFileItem[]): [string, MediaFileItem[]][] {
+  const groups = new Map<string, MediaFileItem[]>()
+  for (const file of files) {
+    const d = new Date(file.createdAt)
+    const dateKey = d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+    if (!groups.has(dateKey)) groups.set(dateKey, [])
+    groups.get(dateKey)!.push(file)
+  }
+  return Array.from(groups.entries())
+}
+
+function getDateLabel(dateKey: string): string {
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  const todayKey = today.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+  const yesterdayKey = yesterday.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+
+  if (dateKey === todayKey) return "Today"
+  if (dateKey === yesterdayKey) return "Yesterday"
+  return dateKey
+}
+
+function totalSize(files: MediaFileItem[]): number {
+  return files.reduce((sum, f) => sum + f.fileSize, 0)
+}
+
+// Dummy files for UI preview when user has no files yet
+function getDummyFiles(): MediaFileItem[] {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 30, 0)
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 14, 0, 0)
+  const lastWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 5, 9, 0, 0)
+  return [
+    {
+      id: "dummy-1",
+      fileName: "Team photo.jpg",
+      fileSize: 2.4 * 1024 * 1024,
+      mimeType: "image/jpeg",
+      storageKey: "",
+      thumbnailUrl: null,
+      url: "https://picsum.photos/400/400?random=1",
+      uploaderId: "dummy-user",
+      createdAt: today.toISOString(),
+      _count: { shares: 2 },
+    },
+    {
+      id: "dummy-2",
+      fileName: "Screenshot 2024.png",
+      fileSize: 890 * 1024,
+      mimeType: "image/png",
+      storageKey: "",
+      thumbnailUrl: null,
+      url: "https://picsum.photos/400/400?random=2",
+      uploaderId: "dummy-user",
+      createdAt: today.toISOString(),
+      _count: { shares: 0 },
+    },
+    {
+      id: "dummy-3",
+      fileName: "Meeting notes.pdf",
+      fileSize: 512 * 1024,
+      mimeType: "application/pdf",
+      storageKey: "",
+      thumbnailUrl: null,
+      url: "#",
+      uploaderId: "dummy-user",
+      createdAt: today.toISOString(),
+      _count: { shares: 1 },
+    },
+    {
+      id: "dummy-4",
+      fileName: "Product demo.mp4",
+      fileSize: 45 * 1024 * 1024,
+      mimeType: "video/mp4",
+      storageKey: "",
+      thumbnailUrl: null,
+      url: "#",
+      uploaderId: "dummy-user",
+      createdAt: yesterday.toISOString(),
+      _count: { shares: 0 },
+    },
+    {
+      id: "dummy-5",
+      fileName: "Landscape.jpg",
+      fileSize: 1.8 * 1024 * 1024,
+      mimeType: "image/jpeg",
+      storageKey: "",
+      thumbnailUrl: null,
+      url: "https://picsum.photos/400/400?random=3",
+      uploaderId: "dummy-user",
+      createdAt: yesterday.toISOString(),
+      _count: { shares: 0 },
+    },
+    {
+      id: "dummy-6",
+      fileName: "Budget Q1.xlsx",
+      fileSize: 128 * 1024,
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      storageKey: "",
+      thumbnailUrl: null,
+      url: "#",
+      uploaderId: "dummy-user",
+      createdAt: lastWeek.toISOString(),
+      _count: { shares: 3 },
+    },
+    {
+      id: "dummy-7",
+      fileName: "Design mockup.png",
+      fileSize: 3.1 * 1024 * 1024,
+      mimeType: "image/png",
+      storageKey: "",
+      thumbnailUrl: null,
+      url: "https://picsum.photos/400/400?random=4",
+      uploaderId: "dummy-user",
+      createdAt: lastWeek.toISOString(),
+      _count: { shares: 0 },
+    },
+  ]
+}
+
+const DUMMY_MEDIA_FILES = getDummyFiles()
+
+function isDummyFile(file: MediaFileItem): boolean {
+  return file.id.startsWith("dummy-")
+}
+
 // ─── Component ────────────────────────────────────────────────
 
 export function MediaDrive({ currentUserId }: MediaDriveProps) {
   // Sub-tab state
   const [activeSubTab, setActiveSubTab] = useState<"my-files" | "shared-with-me">("my-files")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [viewMode, setViewMode] = useState<"timeline" | "grid" | "list">("timeline")
 
   // My files state
   const [files, setFiles] = useState<MediaFileItem[]>([])
@@ -396,6 +529,10 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
   }
 
   const handleDownload = (file: MediaFileItem) => {
+    if (isDummyFile(file)) {
+      if (file.url && file.url !== "#") window.open(file.url, "_blank")
+      return
+    }
     const a = document.createElement("a")
     a.href = file.url
     a.download = file.fileName
@@ -514,7 +651,7 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(file)}>
               <Download className="h-4 w-4" />
             </Button>
-            {!isShared && (
+            {!isShared && !isDummyFile(file) && (
               <>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openShareDialog(file)}>
                   <Share2 className="h-4 w-4" />
@@ -617,7 +754,7 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
                   <Download className="mr-2 h-4 w-4" />
                   Download
                 </DropdownMenuItem>
-                {!isShared && (
+                {!isShared && !isDummyFile(file) && (
                   <>
                     <DropdownMenuItem onClick={() => openShareDialog(file)}>
                       <Share2 className="mr-2 h-4 w-4" />
@@ -729,7 +866,7 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
             <HardDrive className="h-4 w-4" />
             My Files
             <Badge variant="secondary" className="ml-1 font-normal tabular-nums">
-              {totalCount}
+              {files.length > 0 ? totalCount : DUMMY_MEDIA_FILES.length}
             </Badge>
           </button>
           <button
@@ -786,10 +923,20 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
           {/* View toggle */}
           <div className="flex items-center border rounded-lg">
             <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              variant={viewMode === "timeline" ? "secondary" : "ghost"}
               size="icon"
               className="h-8 w-8 rounded-r-none"
+              onClick={() => setViewMode("timeline")}
+              title="Timeline view"
+            >
+              <CalendarDays className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-8 w-8 rounded-none border-x"
               onClick={() => setViewMode("grid")}
+              title="Grid view"
             >
               <Grid3X3 className="h-4 w-4" />
             </Button>
@@ -798,6 +945,7 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
               size="icon"
               className="h-8 w-8 rounded-l-none"
               onClick={() => setViewMode("list")}
+              title="List view"
             >
               <List className="h-4 w-4" />
             </Button>
@@ -812,23 +960,144 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground mt-3">Loading files...</p>
           </div>
-        ) : files.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <HardDrive className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <p className="text-lg font-medium text-muted-foreground">No files uploaded yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Drag and drop files above, or click Upload to get started.
-            </p>
-          </div>
-        ) : (
+        ) : (() => {
+          const displayFiles = files.length > 0 ? files : DUMMY_MEDIA_FILES
+          const showingDummyFiles = files.length === 0
+          return (
           <>
-            {viewMode === "grid" ? (
+            {showingDummyFiles && (
+              <p className="text-xs text-muted-foreground mb-3 text-center">
+                Sample files below — upload your own to replace this preview.
+              </p>
+            )}
+            {viewMode === "timeline" ? (
+              <div className="space-y-8">
+                {groupFilesByDate(displayFiles).map(([dateKey, dateFiles]) => {
+                  const imageCount = dateFiles.filter((f) => f.mimeType.startsWith("image/")).length
+                  const videoCount = dateFiles.filter((f) => f.mimeType.startsWith("video/")).length
+                  const otherCount = dateFiles.length - imageCount - videoCount
+                  return (
+                    <div key={dateKey}>
+                      {/* Date header */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <CalendarDays className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-foreground">{getDateLabel(dateKey)}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {dateFiles.length} {dateFiles.length === 1 ? "file" : "files"} &middot; {formatFileSize(totalSize(dateFiles))}
+                            {imageCount > 0 && ` · ${imageCount} ${imageCount === 1 ? "image" : "images"}`}
+                            {videoCount > 0 && ` · ${videoCount} ${videoCount === 1 ? "video" : "videos"}`}
+                            {otherCount > 0 && ` · ${otherCount} ${otherCount === 1 ? "document" : "documents"}`}
+                          </p>
+                        </div>
+                        {getDateLabel(dateKey) === "Today" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 gap-1.5"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add files
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Thumbnail grid */}
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 ml-12">
+                        {dateFiles.map((file) => {
+                          const isImage = file.mimeType.startsWith("image/")
+                          const isVideo = file.mimeType.startsWith("video/")
+                          const Icon = getFileIcon(file.mimeType)
+                          return (
+                            <div
+                              key={file.id}
+                              className="relative group aspect-square rounded-lg overflow-hidden bg-muted border cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all"
+                              onClick={() => setPreviewFile(file)}
+                            >
+                              {isImage && file.url ? (
+                                <img
+                                  src={file.url}
+                                  alt={file.fileName}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : isVideo ? (
+                                <div className="h-full w-full flex flex-col items-center justify-center gap-1 text-muted-foreground">
+                                  <Film className="h-6 w-6" />
+                                  <span className="text-[10px]">Video</span>
+                                </div>
+                              ) : (
+                                <div className="h-full w-full flex flex-col items-center justify-center gap-1 text-muted-foreground">
+                                  <Icon className="h-6 w-6" />
+                                  <span className="text-[10px] uppercase">{file.mimeType.split("/")[1]?.slice(0, 4)}</span>
+                                </div>
+                              )}
+
+                              {/* Hover overlay with actions */}
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end justify-center pb-1.5 gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20"
+                                  onClick={(e) => { e.stopPropagation(); handleDownload(file) }}
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </Button>
+                                {!isDummyFile(file) && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20"
+                                      onClick={(e) => { e.stopPropagation(); openShareDialog(file) }}
+                                    >
+                                      <Share2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20"
+                                      onClick={(e) => { e.stopPropagation(); setDeleteFile(file) }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Share badge */}
+                              {file._count && file._count.shares > 0 && (
+                                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Badge variant="secondary" className="text-[10px] h-5 px-1 bg-background/80 backdrop-blur-sm">
+                                    <Users className="h-2.5 w-2.5 mr-0.5" />
+                                    {file._count.shares}
+                                  </Badge>
+                                </div>
+                              )}
+
+                              {/* File name tooltip on hover */}
+                              <div className="absolute top-1 left-1 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded truncate block">
+                                  {file.fileName}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : viewMode === "grid" ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {files.map((file) => renderFileCard(file))}
+                {displayFiles.map((file) => renderFileCard(file))}
               </div>
             ) : (
               <div className="space-y-2">
-                {files.map((file) => renderFileCard(file))}
+                {displayFiles.map((file) => renderFileCard(file))}
               </div>
             )}
 
@@ -840,14 +1109,15 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
                   <p className="text-sm text-muted-foreground">Loading more...</p>
                 </div>
               )}
-              {!hasMore && files.length > 0 && (
+              {!showingDummyFiles && !hasMore && displayFiles.length > 0 && (
                 <p className="text-center text-sm text-muted-foreground">
                   All files loaded
                 </p>
               )}
             </div>
           </>
-        )
+          )
+        })()
       ) : sharedLoading ? (
         <div className="flex flex-col items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

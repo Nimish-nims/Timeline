@@ -373,7 +373,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
       <div className="min-h-screen bg-muted/30">
         {/* Minimal Header */}
         <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => router.back()}>
                 <ChevronLeft className="h-4 w-4 mr-1" />
@@ -395,7 +395,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-6 py-8">
+        <main className="mx-auto max-w-7xl px-6 py-8">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

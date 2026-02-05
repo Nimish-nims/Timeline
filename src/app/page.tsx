@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { LogOut, UserPlus, Loader2, Shield, Users, Camera, X, Share2, Copy, Check, Globe, Lock, Inbox, User, Tag, ChevronDown, Search, FileText, HardDrive, Folder } from 'lucide-react'
+import { LogOut, UserPlus, Loader2, Shield, Users, Camera, X, Share2, Copy, Check, Globe, Lock, Inbox, User, Tag, ChevronDown, Search, FileText, HardDrive, Folder, ArrowLeft, MessageSquare, Clock } from 'lucide-react'
 import { NotificationBell } from '@/components/notification-bell'
 import { MediaDrive } from '@/components/media-drive'
 import { Input } from '@/components/ui/input'
@@ -85,6 +85,26 @@ interface Member {
   image: string | null
 }
 
+interface MemberWithSharing {
+  id: string
+  name: string
+  email: string
+  image: string | null
+  sharedWithThemCount: number
+  sharedWithMeCount: number
+}
+
+interface MemberPost {
+  id: string
+  title?: string | null
+  content: string
+  createdAt: string
+  sharedAt: string
+  author: { id: string; name: string; image: string | null }
+  tags?: { id: string; name: string }[]
+  _count?: { comments: number }
+}
+
 export default function Home() {
   const { data: session, status, update: updateSession } = useSession()
   const router = useRouter()
@@ -120,6 +140,15 @@ export default function Home() {
   // Tab state for switching between All Posts and Shared with Me
   const [activeTab, setActiveTab] = useState<'all' | 'shared' | 'files'>('all')
 
+  // Members dialog state
+  const [showMembersDialog, setShowMembersDialog] = useState(false)
+  const [membersWithSharing, setMembersWithSharing] = useState<MemberWithSharing[]>([])
+  const [selectedMember, setSelectedMember] = useState<MemberWithSharing | null>(null)
+  const [memberPosts, setMemberPosts] = useState<{ sharedWithThem: MemberPost[]; sharedWithMe: MemberPost[] }>({ sharedWithThem: [], sharedWithMe: [] })
+  const [loadingMembersDialog, setLoadingMembersDialog] = useState(false)
+  const [loadingMemberPosts, setLoadingMemberPosts] = useState(false)
+  const [memberSearchQuery, setMemberSearchQuery] = useState('')
+
   const handleFilterByUser = (userId: string, userName: string) => {
     setFilterByUserId(userId)
     setFilterByUserName(userName)
@@ -136,6 +165,55 @@ export default function Home() {
 
   const handleClearTagFilter = () => {
     setFilterByTag(null)
+  }
+
+  const fetchMembersWithSharing = async () => {
+    setLoadingMembersDialog(true)
+    try {
+      const res = await fetch('/api/members/sharing')
+      const data = await res.json()
+      if (data.members) {
+        setMembersWithSharing(data.members)
+      }
+    } catch (error) {
+      console.error('Failed to fetch members with sharing:', error)
+    } finally {
+      setLoadingMembersDialog(false)
+    }
+  }
+
+  const fetchMemberPosts = async (memberId: string) => {
+    setLoadingMemberPosts(true)
+    try {
+      const res = await fetch(`/api/members/${memberId}/posts`)
+      const data = await res.json()
+      setMemberPosts({
+        sharedWithThem: data.sharedWithThem || [],
+        sharedWithMe: data.sharedWithMe || [],
+      })
+    } catch (error) {
+      console.error('Failed to fetch member posts:', error)
+      setMemberPosts({ sharedWithThem: [], sharedWithMe: [] })
+    } finally {
+      setLoadingMemberPosts(false)
+    }
+  }
+
+  const handleOpenMembersDialog = () => {
+    setShowMembersDialog(true)
+    setSelectedMember(null)
+    setMemberSearchQuery('')
+    fetchMembersWithSharing()
+  }
+
+  const handleSelectMember = (member: MemberWithSharing) => {
+    setSelectedMember(member)
+    fetchMemberPosts(member.id)
+  }
+
+  const handleBackToMemberList = () => {
+    setSelectedMember(null)
+    setMemberPosts({ sharedWithThem: [], sharedWithMe: [] })
   }
 
   useEffect(() => {
@@ -504,7 +582,10 @@ export default function Home() {
             </div>
             {/* Member count and post count */}
             <div className="flex items-center gap-2 ml-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
+              <button
+                onClick={handleOpenMembersDialog}
+                className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full hover:bg-muted/80 transition-colors cursor-pointer"
+              >
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
                 <div className="flex -space-x-2 ml-1">
@@ -524,7 +605,7 @@ export default function Home() {
                     </div>
                   )}
                 </div>
-              </div>
+              </button>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium tabular-nums">{totalPostCount} {totalPostCount === 1 ? 'post' : 'posts'}</span>
@@ -828,6 +909,232 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Members Dialog */}
+      <Dialog open={showMembersDialog} onOpenChange={(open) => {
+        setShowMembersDialog(open)
+        if (!open) {
+          setSelectedMember(null)
+          setMemberSearchQuery('')
+        }
+      }}>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+          {/* Header */}
+          <div className="px-5 pt-5 pb-4 border-b">
+            {selectedMember ? (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleBackToMemberList}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors shrink-0"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <Avatar className="h-9 w-9 border-2 border-border shrink-0">
+                  {selectedMember.image ? (
+                    <AvatarImage src={selectedMember.image} alt={selectedMember.name} />
+                  ) : null}
+                  <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                    {getInitials(selectedMember.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <DialogTitle className="text-sm font-semibold truncate">{selectedMember.name}</DialogTitle>
+                  <DialogDescription className="text-xs truncate">{selectedMember.email}</DialogDescription>
+                </div>
+              </div>
+            ) : (
+              <>
+                <DialogTitle className="flex items-center gap-2 text-base">
+                  <Users className="h-5 w-5 text-primary" />
+                  Team Members
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  View sharing activity with team members.
+                </DialogDescription>
+              </>
+            )}
+          </div>
+
+          {selectedMember ? (
+            /* Panel 2: Member's shared posts */
+            <div className="overflow-y-auto max-h-[400px] px-5 py-4 space-y-5">
+              {loadingMemberPosts ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mt-2">Loading posts...</p>
+                </div>
+              ) : memberPosts.sharedWithThem.length === 0 && memberPosts.sharedWithMe.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
+                    <Share2 className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">No shared posts</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No posts have been shared between you and {selectedMember.name}.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {memberPosts.sharedWithThem.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                        You shared with {selectedMember.name.split(' ')[0]} ({memberPosts.sharedWithThem.length})
+                      </h4>
+                      <div className="space-y-0.5">
+                        {memberPosts.sharedWithThem.map((post) => (
+                          <button
+                            key={post.id}
+                            onClick={() => {
+                              router.push(`/post/${post.id}`)
+                              setShowMembersDialog(false)
+                            }}
+                            className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-accent transition-colors group"
+                          >
+                            <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                              {post.title || post.content.replace(/<[^>]*>/g, '').slice(0, 60) || 'Untitled post'}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                              {post._count && post._count.comments > 0 && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <MessageSquare className="h-3 w-3" />
+                                  {post._count.comments}
+                                </span>
+                              )}
+                              {post.tags && post.tags.length > 0 && (
+                                <>
+                                  {post.tags.slice(0, 2).map((tag) => (
+                                    <span key={tag.id} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
+                                      {tag.name}
+                                    </span>
+                                  ))}
+                                </>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {memberPosts.sharedWithMe.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                        {selectedMember.name.split(' ')[0]} shared with you ({memberPosts.sharedWithMe.length})
+                      </h4>
+                      <div className="space-y-0.5">
+                        {memberPosts.sharedWithMe.map((post) => (
+                          <button
+                            key={post.id}
+                            onClick={() => {
+                              router.push(`/post/${post.id}`)
+                              setShowMembersDialog(false)
+                            }}
+                            className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-accent transition-colors group"
+                          >
+                            <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                              {post.title || post.content.replace(/<[^>]*>/g, '').slice(0, 60) || 'Untitled post'}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                              {post._count && post._count.comments > 0 && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <MessageSquare className="h-3 w-3" />
+                                  {post._count.comments}
+                                </span>
+                              )}
+                              {post.tags && post.tags.length > 0 && (
+                                <>
+                                  {post.tags.slice(0, 2).map((tag) => (
+                                    <span key={tag.id} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
+                                      {tag.name}
+                                    </span>
+                                  ))}
+                                </>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            /* Panel 1: Member list */
+            <div className="flex flex-col">
+              {/* Search */}
+              <div className="px-5 pt-4 pb-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search members..."
+                    value={memberSearchQuery}
+                    onChange={(e) => setMemberSearchQuery(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+              </div>
+
+              {/* Member list */}
+              <div className="overflow-y-auto max-h-[400px] px-3 pb-4">
+                {loadingMembersDialog ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading members...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {membersWithSharing
+                      .filter((m) => m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) || m.email.toLowerCase().includes(memberSearchQuery.toLowerCase()))
+                      .map((member) => {
+                        const totalShared = member.sharedWithThemCount + member.sharedWithMeCount
+                        return (
+                          <button
+                            key={member.id}
+                            onClick={() => handleSelectMember(member)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left group"
+                          >
+                            <Avatar className="h-9 w-9 border-2 border-border group-hover:border-primary/30 transition-colors shrink-0">
+                              {member.image ? (
+                                <AvatarImage src={member.image} alt={member.name} />
+                              ) : null}
+                              <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                                {getInitials(member.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{member.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                            </div>
+                            {totalShared > 0 && (
+                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
+                                <Share2 className="h-3 w-3" />
+                                <span className="text-xs font-medium tabular-nums">{totalShared}</span>
+                              </div>
+                            )}
+                          </button>
+                        )
+                      })}
+                    {membersWithSharing.filter((m) => m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) || m.email.toLowerCase().includes(memberSearchQuery.toLowerCase())).length === 0 && !loadingMembersDialog && (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <p className="text-sm text-muted-foreground">No members found</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Profile Photo Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>

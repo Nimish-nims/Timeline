@@ -47,6 +47,10 @@
 }
 
 :root {
+  --font-geist-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   --radius: 0.5rem;
   --background: hsl(0 0% 100%);
   --foreground: hsl(240 10% 3.9%);
