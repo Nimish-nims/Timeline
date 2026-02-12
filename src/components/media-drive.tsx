@@ -803,7 +803,7 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
       {/* Upload Area (only on My Files tab; hidden when storage unavailable) */}
       {activeSubTab === "my-files" && !storageUnavailable && (
         <div
-          className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+          className={`relative border-2 border-dashed rounded-xl p-4 sm:p-8 text-center transition-colors ${
             dragOver
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/25 hover:border-muted-foreground/50"
@@ -853,32 +853,34 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
       )}
 
       {/* Sub-tab Navigation */}
-      <div className="flex items-center justify-between border-b">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b overflow-x-auto">
+        <div className="flex items-center gap-0 min-w-0 shrink-0">
           <button
             onClick={() => setActiveSubTab("my-files")}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors shrink-0 ${
               activeSubTab === "my-files"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
             }`}
           >
-            <HardDrive className="h-4 w-4" />
-            My Files
+            <HardDrive className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">My Files</span>
+            <span className="sm:hidden">Files</span>
             <Badge variant="secondary" className="ml-1 font-normal tabular-nums">
               {files.length > 0 ? totalCount : DUMMY_MEDIA_FILES.length}
             </Badge>
           </button>
           <button
             onClick={() => setActiveSubTab("shared-with-me")}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors shrink-0 ${
               activeSubTab === "shared-with-me"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
             }`}
           >
-            <Inbox className="h-4 w-4" />
-            Shared with Me
+            <Inbox className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Shared with Me</span>
+            <span className="sm:hidden">Shared</span>
             {sharedFiles.length > 0 && (
               <Badge variant="secondary" className="ml-1 font-normal tabular-nums">
                 {sharedFiles.length}
@@ -887,7 +889,7 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 pb-2">
+        <div className="flex items-center gap-2 pb-2 shrink-0">
           {/* Uploader filter for shared tab */}
           {activeSubTab === "shared-with-me" && uploaders.length > 0 && (
             <DropdownMenu>

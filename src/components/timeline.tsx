@@ -622,11 +622,11 @@ export function Timeline({
         </div>
       )}
       {/* Vertical timeline line */}
-      <div className="absolute left-[23px] top-4 bottom-4 w-[2px] bg-border rounded-full" />
+      <div className="absolute left-[19px] sm:left-[23px] top-4 bottom-4 w-[2px] bg-border rounded-full" />
 
       <div className="space-y-4">
         {displayedPosts.map((post, index) => (
-          <div key={post.id} className="relative flex gap-4">
+          <div key={post.id} className="relative flex gap-2 sm:gap-4">
             {/* Timeline node - clickable to view profile */}
             <div className="relative z-10 flex-shrink-0 mt-1">
               <div
@@ -639,10 +639,10 @@ export function Timeline({
                     router.push(`/profile/${post.authorId}`)
                   }
                 }}
-                className="w-12 h-12 rounded-full bg-background border-2 border-border flex items-center justify-center hover:border-primary hover:scale-105 transition-all cursor-pointer"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-background border-2 border-border flex items-center justify-center hover:border-primary hover:scale-105 transition-all cursor-pointer"
                 title={`View ${post.authorName}'s profile`}
               >
-                <Avatar className="h-9 w-9">
+                <Avatar className="h-7 w-7 sm:h-9 sm:w-9">
                   {post.authorImage && (
                     <AvatarImage src={post.authorImage} alt={post.authorName} />
                   )}
@@ -659,8 +659,8 @@ export function Timeline({
             {/* Content card */}
             <div className="flex-1 min-w-0 pb-1">
               <Card className="group border bg-card shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2 pt-4 px-5">
-                  <div className="flex items-start justify-between gap-4">
+                <CardHeader className="pb-2 pt-3 sm:pt-4 px-4 sm:px-5">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4">
                     <div className="min-w-0 flex-1">
                       <button
                         onClick={() => router.push(`/profile/${post.authorId}`)}
@@ -733,7 +733,7 @@ export function Timeline({
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="px-5 pb-4 pt-2">
+                <CardContent className="px-4 sm:px-5 pb-4 pt-2">
                   {editingId === post.id ? (
                     <div className="space-y-4">
                       <EddyterWrapper
@@ -897,7 +897,7 @@ export function Timeline({
                         </h3>
                       )}
                       <LinkPreviewHover
-                        apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                        apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_V3lYKsE7j8pfSp45mY7eP3BUltYJagQYoG2KWfoar9I3cqi6WWKbXu8dcpMQ9QfBD2nUbsixQlCtFHDna0ZdUashWk'}
                         enabled={true}
                       >
                         <div
@@ -975,7 +975,7 @@ export function Timeline({
                   )}
                 </CardContent>
                 {editingId === post.id && (
-                  <CardFooter className="flex justify-end gap-2 px-5 py-3 bg-muted/50 border-t">
+                  <CardFooter className="flex justify-end gap-2 px-4 sm:px-5 py-3 bg-muted/50 border-t">
                     <Button
                       variant="outline"
                       size="sm"
@@ -1000,7 +1000,7 @@ export function Timeline({
                     {/* Comments Toggle Button */}
                     <button
                       onClick={() => toggleComments(post.id)}
-                      className={`w-full px-5 py-3 flex items-center justify-between text-sm transition-colors ${
+                      className={`w-full px-4 sm:px-5 py-3 flex items-center justify-between text-sm transition-colors ${
                         expandedComments[post.id]
                           ? 'bg-muted/50'
                           : 'hover:bg-muted/30'
@@ -1028,7 +1028,7 @@ export function Timeline({
 
                     {/* Expanded Comments */}
                     {expandedComments[post.id] && (
-                      <div className="px-5 pb-5 pt-3 bg-muted/20 dark:bg-muted/10">
+                      <div className="px-4 sm:px-5 pb-5 pt-3 bg-muted/20 dark:bg-muted/10">
                         {/* Loading State */}
                         {loadingComments[post.id] && (
                           <div className="flex items-center justify-center py-6">
@@ -1129,7 +1129,7 @@ export function Timeline({
                                             </div>
                                             {/* Comment content */}
                                             <LinkPreviewHover
-                                              apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                                              apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_V3lYKsE7j8pfSp45mY7eP3BUltYJagQYoG2KWfoar9I3cqi6WWKbXu8dcpMQ9QfBD2nUbsixQlCtFHDna0ZdUashWk'}
                                               enabled={true}
                                             >
                                               <div

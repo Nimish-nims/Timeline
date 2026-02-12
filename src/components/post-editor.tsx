@@ -204,7 +204,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-5 pb-0 space-y-4">
+      <CardContent className="px-4 sm:px-5 pb-0 space-y-4">
         {/* Title Input */}
         <Input
           value={title}
@@ -317,7 +317,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
 
       {/* Unified footer toolbar */}
       <CardFooter className="flex flex-col gap-0 p-0 mt-3 border-t border-border/50 bg-muted/20 rounded-b-xl">
-        <div className="flex items-center gap-3 px-5 py-3 w-full">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 w-full">
           {/* Tag toggle */}
           <Button
             type="button"
@@ -341,7 +341,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
                   className="h-8 px-3 gap-2 text-muted-foreground hover:text-foreground rounded-md"
                 >
                   <Folder className="h-4 w-4" />
-                  <span className="text-sm truncate max-w-[140px]">
+                  <span className="text-sm truncate max-w-[100px] sm:max-w-[140px]">
                     {selectedFolderId
                       ? folders.find(f => f.id === selectedFolderId)?.name ?? 'Folder'
                       : 'Folder'}
@@ -380,7 +380,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
           {lockFolder && defaultFolderId && folders.length > 0 && (
             <div className="flex items-center gap-2 h-8 px-3 rounded-md text-muted-foreground text-sm">
               <Folder className="h-4 w-4" />
-              <span className="truncate max-w-[140px]">{folders.find(f => f.id === defaultFolderId)?.name ?? 'Folder'}</span>
+              <span className="truncate max-w-[100px] sm:max-w-[140px]">{folders.find(f => f.id === defaultFolderId)?.name ?? 'Folder'}</span>
             </div>
           )}
 

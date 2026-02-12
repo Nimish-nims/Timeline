@@ -572,43 +572,44 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 max-w-[90rem] items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-              <span className="text-primary-foreground font-bold">T</span>
+        <div className="container mx-auto flex h-14 sm:h-16 max-w-[90rem] items-center justify-between gap-2 px-4 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-primary flex items-center justify-center shadow-sm shrink-0">
+              <span className="text-primary-foreground font-bold text-sm sm:text-base">T</span>
             </div>
             <div className="hidden sm:block">
               <span className="text-xl font-bold tracking-tight">Timeline</span>
             </div>
-            {/* Member count and post count */}
-            <div className="flex items-center gap-2 ml-4">
+            {/* Member count and post count - compact on small screens */}
+            <div className="flex items-center gap-1.5 sm:gap-2 ml-0 sm:ml-2">
               <button
                 onClick={handleOpenMembersDialog}
-                className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full hover:bg-muted/80 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 bg-muted rounded-full hover:bg-muted/80 transition-colors cursor-pointer shrink-0"
               >
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
-                <div className="flex -space-x-2 ml-1">
+                <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-xs sm:text-sm font-medium hidden sm:inline">{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
+                <div className="flex -space-x-2 ml-0 sm:ml-1">
                   {recentMembers.slice(0, 3).map((member) => (
-                    <Avatar key={member.id} className="h-6 w-6 border-2 border-background">
+                    <Avatar key={member.id} className="h-5 w-5 sm:h-6 sm:w-6 border-2 border-background">
                       {member.image ? (
                         <AvatarImage src={member.image} alt={member.name} />
                       ) : null}
-                      <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                      <AvatarFallback className="text-[8px] sm:text-[10px] bg-primary text-primary-foreground">
                         {getInitials(member.name)}
                       </AvatarFallback>
                     </Avatar>
                   ))}
                   {memberCount > 3 && (
-                    <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                      <span className="text-[10px] font-medium text-muted-foreground">+{memberCount - 3}</span>
+                    <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                      <span className="text-[8px] sm:text-[10px] font-medium text-muted-foreground">+{memberCount - 3}</span>
                     </div>
                   )}
                 </div>
               </button>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium tabular-nums">{totalPostCount} {totalPostCount === 1 ? 'post' : 'posts'}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 bg-muted rounded-full shrink-0">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-xs sm:text-sm font-medium tabular-nums hidden sm:inline">{totalPostCount} {totalPostCount === 1 ? 'post' : 'posts'}</span>
+                <span className="text-xs font-medium tabular-nums sm:hidden">{totalPostCount}</span>
               </div>
             </div>
           </div>
@@ -699,7 +700,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-[90rem] px-6 py-8">
+      <main className="container mx-auto max-w-[90rem] px-4 sm:px-6 py-4 sm:py-8">
         {activeTab !== 'files' && (
           <PostEditor
             onPost={handlePost}
@@ -708,11 +709,11 @@ export default function Home() {
         )}
 
         {/* Tab Navigation — thin separator between composer and tabs */}
-        <div className="flex items-center justify-between gap-4 border-b border-border mt-6 mb-6">
-          <div className="flex items-center gap-0">
+        <div className="flex items-center justify-between gap-2 sm:gap-4 border-b border-border mt-4 sm:mt-6 mb-6 overflow-x-auto">
+          <div className="flex items-center gap-0 min-w-0 flex-1 sm:flex-initial">
             <button
               onClick={() => setActiveTab('all')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px shrink-0 ${
                 activeTab === 'all'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -726,31 +727,33 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab('shared')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px shrink-0 ${
                 activeTab === 'shared'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               <Inbox className="h-4 w-4 shrink-0" />
-              Shared with Me
+              <span className="hidden sm:inline">Shared with Me</span>
+              <span className="sm:hidden">Shared</span>
             </button>
             <button
               onClick={() => setActiveTab('files')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px shrink-0 ${
                 activeTab === 'files'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               <HardDrive className="h-4 w-4 shrink-0" />
-              My Files
+              <span className="hidden sm:inline">My Files</span>
+              <span className="sm:hidden">Files</span>
             </button>
           </div>
 
           {/* Tag Filter Dropdown */}
           {activeTab === 'all' && allTags.length > 0 && (
-            <div className="relative pb-2" ref={tagDropdownRef}>
+            <div className="relative pb-2 shrink-0" ref={tagDropdownRef}>
               <Button
                 variant="outline"
                 size="sm"
@@ -894,8 +897,8 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="border-t py-8 mt-auto bg-muted/30">
-        <div className="container mx-auto max-w-[90rem] px-6">
+      <footer className="border-t py-6 sm:py-8 mt-auto bg-muted/30">
+        <div className="container mx-auto max-w-[90rem] px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center">

@@ -430,7 +430,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                           </h3>
                         )}
                         <LinkPreviewHover
-                          apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                          apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_V3lYKsE7j8pfSp45mY7eP3BUltYJagQYoG2KWfoar9I3cqi6WWKbXu8dcpMQ9QfBD2nUbsixQlCtFHDna0ZdUashWk'}
                           enabled={true}
                         >
                           <div

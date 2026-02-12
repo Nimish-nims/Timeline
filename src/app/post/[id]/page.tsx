@@ -373,7 +373,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
       <div className="min-h-screen bg-muted/30">
         {/* Minimal Header */}
         <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="mx-auto flex h-14 max-w-[90rem] items-center justify-between px-6">
+          <div className="mx-auto flex h-14 max-w-[90rem] items-center justify-between px-4 sm:px-6">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => router.back()}>
                 <ChevronLeft className="h-4 w-4 mr-1" />
@@ -395,7 +395,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
           </div>
         </header>
 
-        <main className="mx-auto max-w-[90rem] px-6 py-8">
+        <main className="mx-auto max-w-[90rem] px-4 sm:px-6 py-4 sm:py-8">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -421,10 +421,10 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
               {/* Post Card */}
               <Card className="overflow-hidden">
                 {/* Author Header */}
-                <div className="px-6 pt-6 pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-11 w-11 ring-2 ring-background">
+                <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      <Avatar className="h-10 w-10 sm:h-11 sm:w-11 ring-2 ring-background shrink-0">
                         {post.author.image && <AvatarImage src={post.author.image} />}
                         <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-semibold">
                           {getInitials(post.author.name)}
@@ -443,7 +443,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                     </div>
 
                     {canEditPost && !isEditing && (
-                      <div className="flex items-center">
+                      <div className="flex items-center shrink-0">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleOpenHistory}>
@@ -476,7 +476,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                 <Separator />
 
                 {/* Post Content */}
-                <div className="px-6 py-5">
+                <div className="px-4 sm:px-6 py-4 sm:py-5">
                   {isEditing ? (
                     <div className="space-y-4">
                       <div className="rounded-lg border overflow-hidden [&_.eddyter-container]:!max-w-full [&_.ProseMirror]:!max-w-full">
@@ -501,7 +501,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                         <h1 className="text-2xl font-bold tracking-tight mb-4">{post.title}</h1>
                       )}
                       <LinkPreviewHover
-                        apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                        apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_V3lYKsE7j8pfSp45mY7eP3BUltYJagQYoG2KWfoar9I3cqi6WWKbXu8dcpMQ9QfBD2nUbsixQlCtFHDna0ZdUashWk'}
                         enabled={true}
                       >
                         <div
@@ -517,7 +517,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                 {!isEditing && ((post.tags && post.tags.length > 0) || (post.mentions && post.mentions.length > 0) || (post.shares && post.shares.length > 0)) && (
                   <>
                     <Separator />
-                    <div className="px-6 py-4 flex flex-wrap items-center gap-4">
+                    <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center gap-4">
                       {post.tags && post.tags.length > 0 && (
                         <div className="flex items-center gap-2">
                           <Tag className="h-4 w-4 text-muted-foreground" />
@@ -574,7 +574,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
 
               {/* Comments Card */}
               <Card>
-                <div className="px-6 py-4 flex items-center justify-between">
+                <div className="px-4 sm:px-6 py-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
                     <span className="font-semibold">Comments</span>
@@ -584,7 +584,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
 
                 <Separator />
 
-                <div className="px-6 py-4">
+                <div className="px-4 sm:px-6 py-4">
                   {/* Comment List */}
                   {post.comments && post.comments.length > 0 ? (
                     <div className="space-y-4 mb-6">
@@ -647,7 +647,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                                     </span>
                                   </div>
                                   <LinkPreviewHover
-                                    apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                                    apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_V3lYKsE7j8pfSp45mY7eP3BUltYJagQYoG2KWfoar9I3cqi6WWKbXu8dcpMQ9QfBD2nUbsixQlCtFHDna0ZdUashWk'}
                                     enabled={true}
                                   >
                                     <div
@@ -733,9 +733,9 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
 
         {/* History Dialog */}
         <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-          <DialogContent className="w-[95vw] max-w-5xl h-[85vh] max-h-[800px] p-0 gap-0 overflow-hidden flex flex-col">
+          <DialogContent className="w-[100vw] sm:w-[95vw] max-w-5xl h-[100dvh] sm:h-[85vh] max-h-[800px] p-0 gap-0 overflow-hidden flex flex-col rounded-none sm:rounded-lg">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b shrink-0 bg-background">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b shrink-0 bg-background">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
                   <History className="h-4 w-4 text-primary" />
@@ -749,9 +749,9 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
               </div>
             </div>
 
-            <div className="flex flex-1 min-h-0 overflow-hidden">
-              {/* Version List - Sidebar */}
-              <div className="w-56 shrink-0 border-r bg-muted/30 flex flex-col">
+            <div className="flex flex-1 min-h-0 overflow-hidden flex-col sm:flex-row">
+              {/* Version List - Sidebar: full width on mobile, sidebar on sm+ */}
+              <div className="w-full sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r bg-muted/30 flex flex-col max-h-[40%] sm:max-h-none">
                 <div className="px-3 py-2 border-b bg-muted/50">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Versions</p>
                 </div>
@@ -808,7 +808,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                 {previewEntry ? (
                   <>
                     {/* Preview Header */}
-                    <div className="px-6 py-3 border-b bg-muted/20 flex items-center justify-between shrink-0">
+                    <div className="px-4 sm:px-6 py-3 border-b bg-muted/20 flex items-center justify-between shrink-0 gap-2">
                       <div className="flex items-center gap-3">
                         <Badge variant="outline" className="font-medium">
                           Version {history.findIndex(h => h.id === previewEntry.id) !== -1
@@ -834,10 +834,10 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                       </Button>
                     </div>
                     {/* Preview Content */}
-                    <div className="flex-1 overflow-y-auto p-6">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                       <div className="rounded-xl border bg-card p-6 shadow-sm">
                         <LinkPreviewHover
-                          apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_qzN3ppNHlkHUWMGsZ1pRSqsipU8124d7Q3Mw9FTc3cDW7Q3AwA9JXiVmARpgXqIIaU5PKXoYMeDVSuG2Z9GGJyO8AF'}
+                          apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_V3lYKsE7j8pfSp45mY7eP3BUltYJagQYoG2KWfoar9I3cqi6WWKbXu8dcpMQ9QfBD2nUbsixQlCtFHDna0ZdUashWk'}
                           enabled={true}
                         >
                           <div
