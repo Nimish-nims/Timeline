@@ -501,7 +501,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                         <h1 className="text-2xl font-bold tracking-tight mb-4">{post.title}</h1>
                       )}
                       <LinkPreviewHover
-                        apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_V3lYKsE7j8pfSp45mY7eP3BUltYJagQYoG2KWfoar9I3cqi6WWKbXu8dcpMQ9QfBD2nUbsixQlCtFHDna0ZdUashWk'}
+                        apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_aSglvMBIsxkjO5qlEgcPFjBm2rtBNS4BsthZqECxC3MNzqad4Ods6DhHXLF0X3dAXG05k8K8oF4K5IornLL1G7CvkS'}
                         enabled={true}
                       >
                         <div
@@ -647,7 +647,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                                     </span>
                                   </div>
                                   <LinkPreviewHover
-                                    apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_V3lYKsE7j8pfSp45mY7eP3BUltYJagQYoG2KWfoar9I3cqi6WWKbXu8dcpMQ9QfBD2nUbsixQlCtFHDna0ZdUashWk'}
+                                    apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_aSglvMBIsxkjO5qlEgcPFjBm2rtBNS4BsthZqECxC3MNzqad4Ods6DhHXLF0X3dAXG05k8K8oF4K5IornLL1G7CvkS'}
                                     enabled={true}
                                   >
                                     <div
@@ -837,7 +837,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                     <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                       <div className="rounded-xl border bg-card p-6 shadow-sm">
                         <LinkPreviewHover
-                          apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_V3lYKsE7j8pfSp45mY7eP3BUltYJagQYoG2KWfoar9I3cqi6WWKbXu8dcpMQ9QfBD2nUbsixQlCtFHDna0ZdUashWk'}
+                          apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_aSglvMBIsxkjO5qlEgcPFjBm2rtBNS4BsthZqECxC3MNzqad4Ods6DhHXLF0X3dAXG05k8K8oF4K5IornLL1G7CvkS'}
                           enabled={true}
                         >
                           <div
