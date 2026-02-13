@@ -254,7 +254,7 @@ export default function PublicTimelinePage() {
                     </div>
                   </div>
                   <LinkPreviewHover
-                    apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_aSglvMBIsxkjO5qlEgcPFjBm2rtBNS4BsthZqECxC3MNzqad4Ods6DhHXLF0X3dAXG05k8K8oF4K5IornLL1G7CvkS'}
+                    apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_rId57ucbwAiqaa6FWAlXdx4DmZcs71K8DHAoXaoubbxyudHne8EjoFFowo3ldbSytoxx8V9cCBZG0Qz7kMNJfaodll'}
                     enabled={true}
                   >
                     <div
@@ -313,7 +313,7 @@ export default function PublicTimelinePage() {
                                   {comment.author.name}
                                 </span>
                                 <LinkPreviewHover
-                                  apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_aSglvMBIsxkjO5qlEgcPFjBm2rtBNS4BsthZqECxC3MNzqad4Ods6DhHXLF0X3dAXG05k8K8oF4K5IornLL1G7CvkS'}
+                                  apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_rId57ucbwAiqaa6FWAlXdx4DmZcs71K8DHAoXaoubbxyudHne8EjoFFowo3ldbSytoxx8V9cCBZG0Qz7kMNJfaodll'}
                                   enabled={true}
                                 >
                                   <div
