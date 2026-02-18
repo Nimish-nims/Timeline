@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Send, Loader2, X, Tag, Plus, Folder, Inbox, ChevronDown, Check } from 'lucide-react'
+import { Send, Loader2, X, Tag, Plus, Folder, Inbox, ChevronDown, Check, Paperclip, File, Image as ImageIcon, FileText } from 'lucide-react'
 import { useMentionMenuAvatars, type MemberForMention } from '@/lib/mention-menu-avatars'
 
 const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
@@ -34,12 +34,21 @@ interface FolderOption {
 }
 
 interface PostEditorProps {
-  onPost: (content: string, tags: string[], title?: string, folderId?: string | null) => void
+  onPost: (content: string, tags: string[], title?: string, folderId?: string | null, attachmentIds?: string[]) => void
   folders?: FolderOption[]
   /** Pre-select and optionally lock saving to this folder (e.g. on folder page). */
   defaultFolderId?: string | null
   /** When true, hide folder selector and always save to defaultFolderId. */
   lockFolder?: boolean
+}
+
+interface AttachmentFile {
+  id: string
+  fileName: string
+  fileSize: number
+  mimeType: string
+  url?: string
+  thumbnailUrl?: string | null
 }
 
 function getInitials(name: string): string {
@@ -65,7 +74,10 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
   const [mentionUserList, setMentionUserList] = useState<string[]>([])
   const [membersForMentions, setMembersForMentions] = useState<MemberForMention[]>([])
   const [mentionListReady, setMentionListReady] = useState(false)
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([])
+  const [uploading, setUploading] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useMentionMenuAvatars(membersForMentions)
 
@@ -164,26 +176,100 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
     }
   }
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setUploading(true)
+    const formData = new FormData()
+    Array.from(files).forEach((file) => formData.append("files", file))
+
+    try {
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data?.error || "Failed to upload files")
+        return
+      }
+
+      const data = await res.json()
+      if (data.uploaded && data.uploaded.length > 0) {
+        const newAttachments: AttachmentFile[] = data.uploaded.map((file: {
+          id: string
+          fileName: string
+          fileSize: number
+          mimeType: string
+          url: string
+          thumbnailUrl?: string | null
+        }) => ({
+          id: file.id,
+          fileName: file.fileName,
+          fileSize: file.fileSize,
+          mimeType: file.mimeType,
+          url: file.url,
+          thumbnailUrl: file.thumbnailUrl
+        }))
+        setAttachments([...attachments, ...newAttachments])
+      }
+
+      if (data.errors && data.errors.length > 0) {
+        const errorMsg = data.errors.map((e: { fileName: string; error: string }) => `${e.fileName}: ${e.error}`).join("\n")
+        alert(`Some files failed to upload:\n${errorMsg}`)
+      }
+    } catch (error) {
+      console.error("Upload failed:", error)
+      alert("Upload failed. Please try again.")
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments(attachments.filter(att => att.id !== id))
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) return ImageIcon
+    if (mimeType.startsWith('video/')) return File
+    if (mimeType === 'application/pdf' || mimeType.startsWith('text/')) return FileText
+    return File
+  }
+
   const handlePost = async () => {
     const strippedContent = content.replace(/<[^>]*>/g, '').trim()
-    if (!strippedContent) return
+    if (!strippedContent && attachments.length === 0) return
 
     const folderIdToUse = lockFolder ? defaultFolderId : selectedFolderId
+    const attachmentIds = attachments.map(att => att.id)
     setIsPosting(true)
     try {
-      onPost(content, tags, title.trim() || undefined, folderIdToUse)
+      onPost(content, tags, title.trim() || undefined, folderIdToUse, attachmentIds.length > 0 ? attachmentIds : undefined)
       setTitle('')
       setContent('')
       setTags([])
       setTagInput('')
       setShowTagInput(false)
+      setAttachments([])
       setEditorKey(prev => prev + 1)
     } finally {
       setIsPosting(false)
     }
   }
 
-  const hasContent = content.replace(/<[^>]*>/g, '').trim().length > 0
+  const hasContent = content.replace(/<[^>]*>/g, '').trim().length > 0 || attachments.length > 0
   const userName = session?.user?.name || 'User'
   const filteredSuggestions = suggestedTags.filter(
     t => t.includes(tagInput.toLowerCase()) && !tags.includes(t)
@@ -313,11 +399,79 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
             )}
           </div>
         )}
+
+        {/* Attachments display */}
+        {attachments.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {attachments.map((attachment) => {
+                const FileIcon = getFileIcon(attachment.mimeType)
+                const isImage = attachment.mimeType.startsWith('image/')
+                return (
+                  <div
+                    key={attachment.id}
+                    className="relative group flex items-center gap-2 p-2 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    {isImage && attachment.thumbnailUrl ? (
+                      <img
+                        src={attachment.thumbnailUrl}
+                        alt={attachment.fileName}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 flex items-center justify-center bg-muted rounded">
+                        <FileIcon className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{attachment.fileName}</p>
+                      <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttachment(attachment.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                    >
+                      <X className="h-4 w-4 text-destructive" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </CardContent>
 
       {/* Unified footer toolbar */}
       <CardFooter className="flex flex-col gap-0 p-0 mt-3 border-t border-border/50 bg-muted/20 rounded-b-xl">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 w-full">
+          {/* File upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileSelect}
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="h-8 px-3 gap-2 text-muted-foreground hover:text-foreground rounded-md"
+          >
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Paperclip className="h-4 w-4" />
+            )}
+            <span className="text-sm">
+              {attachments.length > 0 ? `${attachments.length} file${attachments.length > 1 ? 's' : ''}` : 'Attach'}
+            </span>
+          </Button>
+
           {/* Tag toggle */}
           <Button
             type="button"

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getMentionNamesFromHtml } from "@/lib/mentions"
+import { getPublicUrl } from "@/lib/supabase"
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,6 +69,20 @@ export async function GET(request: NextRequest) {
           tags: { select: { id: true, name: true } },
           shares: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
           mentions: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
+          attachments: {
+            include: {
+              mediaFile: {
+                select: {
+                  id: true,
+                  fileName: true,
+                  fileSize: true,
+                  mimeType: true,
+                  storageKey: true,
+                  thumbnailUrl: true
+                }
+              }
+            }
+          },
           _count: { select: { comments: true } },
           folder: true
         },
@@ -92,6 +107,20 @@ export async function GET(request: NextRequest) {
               email: true,
               image: true,
             }
+          },
+          attachments: {
+            include: {
+              mediaFile: {
+                select: {
+                  id: true,
+                  fileName: true,
+                  fileSize: true,
+                  mimeType: true,
+                  storageKey: true,
+                  thumbnailUrl: true
+                }
+              }
+            }
           }
         },
         orderBy: {
@@ -104,6 +133,7 @@ export async function GET(request: NextRequest) {
         tags: [],
         shares: [],
         mentions: [],
+        attachments: [],
         folder: null as { id: string; name: string } | null,
         _count: { comments: 0 }
       }))
@@ -115,11 +145,23 @@ export async function GET(request: NextRequest) {
       posts = posts.slice(0, limit) // Remove the extra post
     }
 
+    // Add URLs to attachments
+    const postsWithUrls = posts.map(post => ({
+      ...post,
+      attachments: post.attachments?.map(attachment => ({
+        ...attachment,
+        mediaFile: {
+          ...attachment.mediaFile,
+          url: getPublicUrl(attachment.mediaFile.storageKey)
+        }
+      })) || []
+    }))
+
     // Get the cursor for the next page
     const nextCursor = hasMore && posts.length > 0 ? posts[posts.length - 1].id : null
 
     return NextResponse.json({
-      posts,
+      posts: postsWithUrls,
       nextCursor,
       hasMore,
       totalCount
@@ -143,7 +185,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { title, content, tags, folderId: requestFolderId } = await request.json()
+    const { title, content, tags, folderId: requestFolderId, attachmentIds } = await request.json()
 
     if (!content) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 })
@@ -178,6 +220,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate and process attachments
+    const attachmentConnections = []
+    if (attachmentIds && Array.isArray(attachmentIds) && attachmentIds.length > 0) {
+      // Verify all media files exist and belong to the user
+      const mediaFiles = await prisma.mediaFile.findMany({
+        where: {
+          id: { in: attachmentIds },
+          uploaderId: session.user.id
+        },
+        select: { id: true }
+      })
+      const validIds = mediaFiles.map(m => m.id)
+      attachmentConnections.push(...validIds.map(id => ({ id })))
+    }
+
     // Use minimal include so create succeeds even if PostMention/Notification tables don't exist yet
     const post = await prisma.post.create({
       data: {
@@ -187,6 +244,11 @@ export async function POST(request: NextRequest) {
         folderId,
         tags: {
           connect: tagConnections
+        },
+        attachments: {
+          create: attachmentConnections.map(mediaFileId => ({
+            mediaFileId: mediaFileId.id
+          }))
         }
       },
       include: {
@@ -253,12 +315,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Re-fetch with shares/mentions if we added mentions (don't fail response if this fails)
-    let postToReturn: typeof post & { shares?: unknown[]; mentions?: unknown[] } = {
+    let postToReturn: typeof post & { shares?: unknown[]; mentions?: unknown[]; attachments?: unknown[] } = {
       ...post,
       shares: [],
-      mentions: []
+      mentions: [],
+      attachments: []
     }
-    if (mentionNames.length > 0) {
+    if (mentionNames.length > 0 || attachmentConnections.length > 0) {
       try {
         const refetched = await prisma.post.findUnique({
           where: { id: post.id },
@@ -267,12 +330,49 @@ export async function POST(request: NextRequest) {
             tags: { select: { id: true, name: true } },
             shares: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
             mentions: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
+            attachments: {
+              include: {
+                mediaFile: {
+                  select: {
+                    id: true,
+                    fileName: true,
+                    fileSize: true,
+                    mimeType: true,
+                    storageKey: true,
+                    thumbnailUrl: true
+                  }
+                }
+              }
+            },
             _count: { select: { comments: true } }
           }
         })
-        if (refetched) postToReturn = refetched
+        if (refetched) {
+          postToReturn = {
+            ...refetched,
+            attachments: refetched.attachments?.map(attachment => ({
+              ...attachment,
+              mediaFile: {
+                ...attachment.mediaFile,
+                url: getPublicUrl(attachment.mediaFile.storageKey)
+              }
+            })) || []
+          }
+        }
       } catch (_) {
-        // keep postToReturn with empty shares/mentions
+        // keep postToReturn with empty shares/mentions/attachments
+      }
+    } else if (post.attachments && post.attachments.length > 0) {
+      // Add URLs to attachments if they exist
+      postToReturn = {
+        ...postToReturn,
+        attachments: post.attachments.map(attachment => ({
+          ...attachment,
+          mediaFile: {
+            ...attachment.mediaFile,
+            url: getPublicUrl(attachment.mediaFile.storageKey)
+          }
+        }))
       }
     }
 

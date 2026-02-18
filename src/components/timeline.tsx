@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Trash2, Pencil, X, Check, Clock, Loader2, MessageSquare, Send, ChevronDown, ChevronUp, Tag, Plus, Share2, Users, Maximize2, User, Folder, Inbox } from 'lucide-react'
+import { Trash2, Pencil, X, Check, Clock, Loader2, MessageSquare, Send, ChevronDown, ChevronUp, Tag, Plus, Share2, Users, Maximize2, User, Folder, Inbox, File, Image as ImageIcon, FileText, Download } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,6 +76,17 @@ interface Post {
   tags?: Tag[]
   shares?: { user: SharedUser }[]
   mentions?: { user: SharedUser }[]
+  attachments?: {
+    mediaFile: {
+      id: string
+      fileName: string
+      fileSize: number
+      mimeType: string
+      storageKey: string
+      thumbnailUrl?: string | null
+      url?: string
+    }
+  }[]
   folderId?: string | null
   folder?: { id: string; name: string } | null
   _count?: {
@@ -905,6 +916,58 @@ export function Timeline({
                           dangerouslySetInnerHTML={{ __html: addLazyLoadingToImages(post.content) }}
                         />
                       </LinkPreviewHover>
+                      {/* Attachments Display */}
+                      {post.attachments && post.attachments.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                            <File className="h-3.5 w-3.5" />
+                            <span>Attachments ({post.attachments.length})</span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {post.attachments.map((attachment) => {
+                              const mediaFile = attachment.mediaFile
+                              const isImage = mediaFile.mimeType.startsWith('image/')
+                              const FileIcon = isImage ? ImageIcon : mediaFile.mimeType === 'application/pdf' || mediaFile.mimeType.startsWith('text/') ? FileText : File
+                              const fileUrl = mediaFile.url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${mediaFile.storageKey}`
+                              
+                              return (
+                                <a
+                                  key={mediaFile.id}
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group relative flex flex-col items-center gap-2 p-3 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors"
+                                >
+                                  {isImage && mediaFile.thumbnailUrl ? (
+                                    <img
+                                      src={mediaFile.thumbnailUrl}
+                                      alt={mediaFile.fileName}
+                                      className="w-full h-24 object-cover rounded"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-24 flex items-center justify-center bg-muted rounded">
+                                      <FileIcon className="h-8 w-8 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <div className="w-full text-center">
+                                    <p className="text-xs font-medium truncate" title={mediaFile.fileName}>
+                                      {mediaFile.fileName}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {mediaFile.fileSize < 1024
+                                        ? `${mediaFile.fileSize} B`
+                                        : mediaFile.fileSize < 1024 * 1024
+                                        ? `${(mediaFile.fileSize / 1024).toFixed(1)} KB`
+                                        : `${(mediaFile.fileSize / (1024 * 1024)).toFixed(1)} MB`}
+                                    </p>
+                                  </div>
+                                  <Download className="absolute top-2 right-2 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </a>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                       {/* Tags Display - Always visible when tags exist */}
                       {post.tags && post.tags.length > 0 && (
                         <div className="flex flex-wrap items-center gap-1.5 mt-3">

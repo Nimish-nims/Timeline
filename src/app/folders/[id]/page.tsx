@@ -153,7 +153,7 @@ export default function FolderViewPage() {
   }, [hasMore, loadingMore, loading, nextCursor, loadMorePosts])
 
   const handlePost = useCallback(
-    async (content: string, tags: string[], title?: string, postFolderId?: string | null) => {
+    async (content: string, tags: string[], title?: string, postFolderId?: string | null, attachmentIds?: string[]) => {
       if (!session?.user?.id) return
       const targetFolderId = isUncategorized ? null : id
       try {
@@ -165,6 +165,7 @@ export default function FolderViewPage() {
             tags: tags.map((t) => t.toLowerCase()),
             title: title || undefined,
             folderId: targetFolderId,
+            attachmentIds,
           }),
         })
         if (!res.ok) {

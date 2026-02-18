@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { getPublicUrl } from "@/lib/supabase"
 
 export async function GET(
   request: NextRequest,
@@ -55,6 +56,20 @@ export async function GET(
                   name: true,
                   email: true,
                   image: true,
+                }
+              }
+            }
+          },
+          attachments: {
+            include: {
+              mediaFile: {
+                select: {
+                  id: true,
+                  fileName: true,
+                  fileSize: true,
+                  mimeType: true,
+                  storageKey: true,
+                  thumbnailUrl: true
                 }
               }
             }
@@ -123,7 +138,8 @@ export async function GET(
         post = {
           ...minimalPost,
           shares: [],
-          mentions: []
+          mentions: [],
+          attachments: []
         }
       }
     }
@@ -142,7 +158,19 @@ export async function GET(
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    return NextResponse.json(post)
+    // Add URLs to attachments
+    const postWithUrls = {
+      ...post,
+      attachments: post.attachments?.map(attachment => ({
+        ...attachment,
+        mediaFile: {
+          ...attachment.mediaFile,
+          url: getPublicUrl(attachment.mediaFile.storageKey)
+        }
+      })) || []
+    }
+
+    return NextResponse.json(postWithUrls)
   } catch (error) {
     console.error("Failed to fetch post:", error)
     return NextResponse.json({ error: "Failed to fetch post" }, { status: 500 })

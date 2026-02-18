@@ -48,21 +48,22 @@ model Folder {
 }
 
 model Post {
-  id        String    @id @default(cuid())
-  title     String?
-  content   String
-  authorId  String
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  folderId  String?
-  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  comments  Comment[]
-  tags      Tag[]     @relation("PostTags")
-  shares    PostShare[]
-  history   PostHistory[]
-  mentions  PostMention[]
+  id          String          @id @default(cuid())
+  title       String?
+  content     String
+  authorId    String
+  author      User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  folderId    String?
+  folder      Folder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  comments    Comment[]
+  tags        Tag[]           @relation("PostTags")
+  shares      PostShare[]
+  history     PostHistory[]
+  mentions    PostMention[]
   notifications Notification[]
+  attachments PostAttachment[]
 }
 
 model PostMention {
@@ -154,16 +155,17 @@ model Notification {
 }
 
 model MediaFile {
-  id           String       @id @default(cuid())
+  id           String           @id @default(cuid())
   fileName     String
   fileSize     Int
   mimeType     String
-  storageKey   String       @unique
+  storageKey   String           @unique
   thumbnailUrl String?
   uploaderId   String
-  uploader     User         @relation("UserMediaFiles", fields: [uploaderId], references: [id], onDelete: Cascade)
+  uploader     User             @relation("UserMediaFiles", fields: [uploaderId], references: [id], onDelete: Cascade)
   shares       MediaShare[]
-  createdAt    DateTime     @default(now())
+  attachments  PostAttachment[]
+  createdAt    DateTime         @default(now())
 
   @@index([uploaderId])
   @@index([uploaderId, createdAt])
@@ -179,4 +181,17 @@ model MediaShare {
 
   @@unique([mediaFileId, userId])
   @@index([userId])
+}
+
+model PostAttachment {
+  id          String    @id @default(cuid())
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  mediaFileId String
+  mediaFile   MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([postId, mediaFileId])
+  @@index([postId])
+  @@index([mediaFileId])
 }

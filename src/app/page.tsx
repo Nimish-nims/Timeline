@@ -467,12 +467,12 @@ export default function Home() {
     setShowProfileDialog(false)
   }
 
-  const handlePost = async (content: string, tags: string[], title?: string, folderId?: string | null) => {
+  const handlePost = async (content: string, tags: string[], title?: string, folderId?: string | null, attachmentIds?: string[]) => {
     try {
       const res = await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content, tags, folderId: folderId ?? null }),
+        body: JSON.stringify({ title, content, tags, folderId: folderId ?? null, attachmentIds }),
       })
 
       if (res.ok) {

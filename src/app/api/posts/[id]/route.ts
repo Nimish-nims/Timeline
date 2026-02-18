@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getMentionNamesFromHtml } from "@/lib/mentions"
+import { getPublicUrl } from "@/lib/supabase"
 
 export async function PUT(
   request: NextRequest,
@@ -15,7 +16,7 @@ export async function PUT(
     }
 
     const { id } = await params
-    const { title, content, tags, folderId: requestFolderId } = await request.json()
+    const { title, content, tags, folderId: requestFolderId, attachmentIds } = await request.json()
 
     const post = await prisma.post.findUnique({
       where: { id }
@@ -71,6 +72,27 @@ export async function PUT(
       }
     }
 
+    // Process attachments if provided
+    let attachmentUpdate: { set?: { mediaFileId: string }[] } | undefined = undefined
+    if (attachmentIds !== undefined) {
+      if (Array.isArray(attachmentIds) && attachmentIds.length > 0) {
+        // Verify all media files exist and belong to the user
+        const mediaFiles = await prisma.mediaFile.findMany({
+          where: {
+            id: { in: attachmentIds },
+            uploaderId: session.user.id
+          },
+          select: { id: true }
+        })
+        attachmentUpdate = {
+          set: mediaFiles.map(m => ({ mediaFileId: m.id }))
+        }
+      } else {
+        // Empty array means remove all attachments
+        attachmentUpdate = { set: [] }
+      }
+    }
+
     // Use minimal include so update succeeds even if PostMention table doesn't exist
     const updatedPost = await prisma.post.update({
       where: { id },
@@ -82,6 +104,9 @@ export async function PUT(
           tags: {
             set: tagConnections
           }
+        }),
+        ...(attachmentUpdate !== undefined && {
+          attachments: attachmentUpdate
         })
       },
       include: {
@@ -161,12 +186,37 @@ export async function PUT(
           tags: { select: { id: true, name: true } },
           shares: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
           mentions: { include: { user: { select: { id: true, name: true, email: true, image: true } } } },
+          attachments: {
+            include: {
+              mediaFile: {
+                select: {
+                  id: true,
+                  fileName: true,
+                  fileSize: true,
+                  mimeType: true,
+                  storageKey: true,
+                  thumbnailUrl: true
+                }
+              }
+            }
+          },
           _count: { select: { comments: true } }
         }
       })
-      if (refetched) postToReturn = refetched
+      if (refetched) {
+        postToReturn = {
+          ...refetched,
+          attachments: refetched.attachments?.map(attachment => ({
+            ...attachment,
+            mediaFile: {
+              ...attachment.mediaFile,
+              url: getPublicUrl(attachment.mediaFile.storageKey)
+            }
+          })) || []
+        }
+      }
     } catch (_) {
-      // keep postToReturn with empty shares/mentions
+      // keep postToReturn with empty shares/mentions/attachments
     }
 
     return NextResponse.json(postToReturn)

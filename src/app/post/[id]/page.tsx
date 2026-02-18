@@ -35,6 +35,10 @@ import {
   History,
   RotateCcw,
   Home,
+  File,
+  Image as ImageIcon,
+  FileText,
+  Download,
 } from 'lucide-react'
 import {
   Dialog,
@@ -94,6 +98,17 @@ interface Post {
   tags?: TagType[]
   shares?: { user: SharedUser }[]
   mentions?: { user: SharedUser }[]
+  attachments?: {
+    mediaFile: {
+      id: string
+      fileName: string
+      fileSize: number
+      mimeType: string
+      storageKey: string
+      thumbnailUrl?: string | null
+      url?: string
+    }
+  }[]
   comments?: Comment[]
   _count?: {
     comments: number
@@ -509,6 +524,58 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                           dangerouslySetInnerHTML={{ __html: post.content }}
                         />
                       </LinkPreviewHover>
+                      {/* Attachments Display */}
+                      {post.attachments && post.attachments.length > 0 && (
+                        <div className="mt-6 space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                            <File className="h-4 w-4" />
+                            <span>Attachments ({post.attachments.length})</span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {post.attachments.map((attachment) => {
+                              const mediaFile = attachment.mediaFile
+                              const isImage = mediaFile.mimeType.startsWith('image/')
+                              const FileIcon = isImage ? ImageIcon : mediaFile.mimeType === 'application/pdf' || mediaFile.mimeType.startsWith('text/') ? FileText : File
+                              const fileUrl = mediaFile.url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/${mediaFile.storageKey}`
+                              
+                              return (
+                                <a
+                                  key={mediaFile.id}
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group relative flex flex-col items-center gap-2 p-4 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors"
+                                >
+                                  {isImage && mediaFile.thumbnailUrl ? (
+                                    <img
+                                      src={mediaFile.thumbnailUrl}
+                                      alt={mediaFile.fileName}
+                                      className="w-full h-32 object-cover rounded"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-32 flex items-center justify-center bg-muted rounded">
+                                      <FileIcon className="h-10 w-10 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <div className="w-full text-center">
+                                    <p className="text-sm font-medium truncate" title={mediaFile.fileName}>
+                                      {mediaFile.fileName}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {mediaFile.fileSize < 1024
+                                        ? `${mediaFile.fileSize} B`
+                                        : mediaFile.fileSize < 1024 * 1024
+                                        ? `${(mediaFile.fileSize / 1024).toFixed(1)} KB`
+                                        : `${(mediaFile.fileSize / (1024 * 1024)).toFixed(1)} MB`}
+                                    </p>
+                                  </div>
+                                  <Download className="absolute top-3 right-3 h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </a>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
