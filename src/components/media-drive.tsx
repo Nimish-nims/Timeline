@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -47,6 +48,10 @@ import {
   AlertCircle,
   CalendarDays,
   Plus,
+  MessageSquare,
+  ExternalLink,
+  Paperclip,
+  Clock,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
@@ -77,6 +82,12 @@ interface MediaFileItem {
   _count?: {
     shares: number
   }
+  post?: {
+    id: string
+    title: string | null
+    content: string
+    createdAt: string
+  } | null
   createdAt: string
   sharedAt?: string
 }
@@ -172,8 +183,84 @@ function getDateLabel(dateKey: string): string {
   return dateKey
 }
 
+/** Convert a display date key like "Feb 20, 2026" to ISO "2026-02-20" */
+function dateKeyToISO(dateKey: string): string {
+  const d = new Date(dateKey)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const dd = String(d.getDate()).padStart(2, "0")
+  return `${yyyy}-${mm}-${dd}`
+}
+
 function totalSize(files: MediaFileItem[]): number {
   return files.reduce((sum, f) => sum + f.fileSize, 0)
+}
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").trim()
+}
+
+function getPostLabel(post: { title: string | null; content: string }): string {
+  if (post.title && post.title.trim()) return post.title.trim()
+  const text = stripHtml(post.content)
+  if (text.length <= 80) return text || "Untitled post"
+  return text.slice(0, 80) + "..."
+}
+
+// Group files: files with same post grouped together, standalone files separate
+interface FileGroup {
+  type: "post" | "standalone"
+  post?: { id: string; title: string | null; content: string; createdAt: string }
+  files: MediaFileItem[]
+}
+
+function groupFilesByPost(files: MediaFileItem[]): FileGroup[] {
+  const postGroups = new Map<string, { post: NonNullable<MediaFileItem["post"]>; files: MediaFileItem[] }>()
+  const standaloneFiles: MediaFileItem[] = []
+
+  for (const file of files) {
+    if (file.post) {
+      const existing = postGroups.get(file.post.id)
+      if (existing) {
+        existing.files.push(file)
+      } else {
+        postGroups.set(file.post.id, { post: file.post, files: [file] })
+      }
+    } else {
+      standaloneFiles.push(file)
+    }
+  }
+
+  // Merge groups, maintaining chronological order based on the first file's createdAt
+  const groups: FileGroup[] = []
+
+  // We iterate through original files to keep insertion order
+  const seenPosts = new Set<string>()
+  let pendingStandalone: MediaFileItem[] = []
+
+  for (const file of files) {
+    if (file.post) {
+      // Flush pending standalone files first
+      if (pendingStandalone.length > 0) {
+        groups.push({ type: "standalone", files: pendingStandalone })
+        pendingStandalone = []
+      }
+      if (!seenPosts.has(file.post.id)) {
+        seenPosts.add(file.post.id)
+        const pg = postGroups.get(file.post.id)!
+        groups.push({ type: "post", post: pg.post, files: pg.files })
+      }
+    } else {
+      pendingStandalone.push(file)
+    }
+  }
+
+  // Flush remaining standalone
+  if (pendingStandalone.length > 0) {
+    groups.push({ type: "standalone", files: pendingStandalone })
+  }
+
+  return groups
 }
 
 // Dummy files for UI preview when user has no files yet
@@ -281,7 +368,7 @@ function isDummyFile(file: MediaFileItem): boolean {
 export function MediaDrive({ currentUserId }: MediaDriveProps) {
   // Sub-tab state
   const [activeSubTab, setActiveSubTab] = useState<"my-files" | "shared-with-me">("my-files")
-  const [viewMode, setViewMode] = useState<"timeline" | "grid" | "list">("timeline")
+  const [viewMode, setViewMode] = useState<"timeline" | "vertical-timeline" | "grid" | "list">("timeline")
 
   // My files state
   const [files, setFiles] = useState<MediaFileItem[]>([])
@@ -934,6 +1021,15 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
               <CalendarDays className="h-4 w-4" />
             </Button>
             <Button
+              variant={viewMode === "vertical-timeline" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-8 w-8 rounded-none border-r"
+              onClick={() => setViewMode("vertical-timeline")}
+              title="Vertical timeline"
+            >
+              <Clock className="h-4 w-4" />
+            </Button>
+            <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
               size="icon"
               className="h-8 w-8 rounded-none border-x"
@@ -973,133 +1069,240 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
               </p>
             )}
             {viewMode === "timeline" ? (
-              <div className="space-y-8">
-                {groupFilesByDate(displayFiles).map(([dateKey, dateFiles]) => {
-                  const imageCount = dateFiles.filter((f) => f.mimeType.startsWith("image/")).length
-                  const videoCount = dateFiles.filter((f) => f.mimeType.startsWith("video/")).length
-                  const otherCount = dateFiles.length - imageCount - videoCount
+              <div className="space-y-6">
+                {groupFilesByPost(displayFiles).map((group, groupIndex) => {
+                  if (group.type === "post" && group.post) {
+                    // ── Post-attached files ──
+                    const postLabel = getPostLabel(group.post)
+                    return (
+                      <div key={`post-${group.post.id}`} className="rounded-xl border border-border/60 bg-card overflow-hidden">
+                        {/* Post context header */}
+                        <Link
+                          href={`/post/${group.post.id}`}
+                          className="flex items-start gap-3 px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors border-b border-border/40 group/header"
+                        >
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                            <MessageSquare className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground leading-snug line-clamp-2 group-hover/header:text-primary transition-colors">
+                              {postLabel}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-muted-foreground">
+                                {formatDate(group.post.createdAt)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">·</span>
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Paperclip className="h-3 w-3" />
+                                {group.files.length} {group.files.length === 1 ? "attachment" : "attachments"}
+                              </span>
+                            </div>
+                          </div>
+                          <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover/header:opacity-100 transition-opacity shrink-0 mt-1" />
+                        </Link>
+
+                        {/* Attached files grid */}
+                        <div className="p-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {group.files.map((file) => renderFileCard(file))}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // ── Standalone files (no post) ──
                   return (
-                    <div key={dateKey}>
-                      {/* Date header */}
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <CalendarDays className="h-4 w-4 text-primary" />
+                    <div key={`standalone-${groupIndex}`}>
+                      {/* Standalone header */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <HardDrive className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-foreground">{getDateLabel(dateKey)}</h3>
+                          <h3 className="text-sm font-medium text-muted-foreground">Standalone files</h3>
                           <p className="text-xs text-muted-foreground">
-                            {dateFiles.length} {dateFiles.length === 1 ? "file" : "files"} &middot; {formatFileSize(totalSize(dateFiles))}
-                            {imageCount > 0 && ` · ${imageCount} ${imageCount === 1 ? "image" : "images"}`}
-                            {videoCount > 0 && ` · ${videoCount} ${videoCount === 1 ? "video" : "videos"}`}
-                            {otherCount > 0 && ` · ${otherCount} ${otherCount === 1 ? "document" : "documents"}`}
+                            {group.files.length} {group.files.length === 1 ? "file" : "files"} · Not attached to any post
                           </p>
                         </div>
-                        {getDateLabel(dateKey) === "Today" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="shrink-0 gap-1.5"
-                            onClick={() => fileInputRef.current?.click()}
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            Add files
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 gap-1.5"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add files
+                        </Button>
                       </div>
 
-                      {/* Thumbnail grid */}
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 ml-12">
-                        {dateFiles.map((file) => {
-                          const isImage = file.mimeType.startsWith("image/")
-                          const isVideo = file.mimeType.startsWith("video/")
-                          const Icon = getFileIcon(file.mimeType)
-                          return (
-                            <div
-                              key={file.id}
-                              className="relative group aspect-square rounded-lg overflow-hidden bg-muted border cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all"
-                              onClick={() => setPreviewFile(file)}
-                            >
-                              {isImage && file.url ? (
-                                <img
-                                  src={file.url}
-                                  alt={file.fileName}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : isVideo ? (
-                                <div className="h-full w-full flex flex-col items-center justify-center gap-1 text-muted-foreground">
-                                  <Film className="h-6 w-6" />
-                                  <span className="text-[10px]">Video</span>
-                                </div>
-                              ) : (
-                                <div className="h-full w-full flex flex-col items-center justify-center gap-1 text-muted-foreground">
-                                  <Icon className="h-6 w-6" />
-                                  <span className="text-[10px] uppercase">{file.mimeType.split("/")[1]?.slice(0, 4)}</span>
-                                </div>
-                              )}
-
-                              {/* Hover overlay with actions */}
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end justify-center pb-1.5 gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20"
-                                  onClick={(e) => { e.stopPropagation(); handleDownload(file) }}
-                                >
-                                  <Download className="h-3.5 w-3.5" />
-                                </Button>
-                                {!isDummyFile(file) && (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20"
-                                      onClick={(e) => { e.stopPropagation(); openShareDialog(file) }}
-                                    >
-                                      <Share2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20"
-                                      onClick={(e) => { e.stopPropagation(); setDeleteFile(file) }}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Share badge */}
-                              {file._count && file._count.shares > 0 && (
-                                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Badge variant="secondary" className="text-[10px] h-5 px-1 bg-background/80 backdrop-blur-sm">
-                                    <Users className="h-2.5 w-2.5 mr-0.5" />
-                                    {file._count.shares}
-                                  </Badge>
-                                </div>
-                              )}
-
-                              {/* File name tooltip on hover */}
-                              <div className="absolute top-1 left-1 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded truncate block">
-                                  {file.fileName}
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        })}
+                      {/* Standalone files grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 ml-11">
+                        {group.files.map((file) => renderFileCard(file))}
                       </div>
                     </div>
                   )
                 })}
               </div>
+            ) : viewMode === "vertical-timeline" ? (
+              /* ── Vertical Timeline grouped by date ── */
+              <div className="relative">
+                {/* Vertical line */}
+                <div className="absolute left-[19px] top-4 bottom-4 w-[2px] bg-border rounded-full" />
+
+                <div className="space-y-6">
+                  {groupFilesByDate(displayFiles).map(([dateKey, dateFiles], groupIdx) => {
+                    // Collect unique posts from this date group
+                    const postsInGroup = new Map<string, NonNullable<MediaFileItem["post"]>>()
+                    for (const f of dateFiles) {
+                      if (f.post) postsInGroup.set(f.post.id, f.post)
+                    }
+
+                    return (
+                      <div key={dateKey} className="relative flex gap-3 sm:gap-4">
+                        {/* Timeline node — date circle */}
+                        <div className="relative z-10 flex-shrink-0 mt-1">
+                          <div className="w-10 h-10 rounded-full bg-background border-2 border-border flex items-center justify-center">
+                            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          {groupIdx === 0 && (
+                            <div className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-background" />
+                          )}
+                        </div>
+
+                        {/* Content card */}
+                        <div className="flex-1 min-w-0 pb-1">
+                          <Card className="border bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                            {/* Date header — clickable link + add-files button */}
+                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-muted/30">
+                              <Link
+                                href={`/files/${dateKeyToISO(dateKey)}`}
+                                className="flex items-center gap-2 hover:opacity-80 transition-opacity group/date"
+                              >
+                                <h3 className="text-sm font-semibold group-hover/date:text-primary transition-colors">{getDateLabel(dateKey)}</h3>
+                                <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                                  {dateFiles.length} {dateFiles.length === 1 ? "file" : "files"}
+                                </Badge>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover/date:opacity-100 transition-opacity" />
+                              </Link>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">{formatFileSize(totalSize(dateFiles))}</span>
+                                {!storageUnavailable && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs gap-1"
+                                    onClick={() => fileInputRef.current?.click()}
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add files
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Post context banners */}
+                            {postsInGroup.size > 0 && (
+                              <div className="border-b border-border/40">
+                                {Array.from(postsInGroup.values()).map((post) => (
+                                  <Link
+                                    key={post.id}
+                                    href={`/post/${post.id}`}
+                                    className="flex items-center gap-2 px-4 py-1.5 bg-primary/5 hover:bg-primary/10 transition-colors group/post border-b border-border/20 last:border-b-0"
+                                  >
+                                    <MessageSquare className="h-3 w-3 text-primary shrink-0" />
+                                    <span className="text-xs font-medium text-primary truncate group-hover/post:underline">
+                                      {getPostLabel(post)}
+                                    </span>
+                                    <span className="text-[10px] text-primary/50 shrink-0 flex items-center gap-0.5 ml-auto mr-1">
+                                      <Paperclip className="h-2.5 w-2.5" />
+                                      {dateFiles.filter(f => f.post?.id === post.id).length}
+                                    </span>
+                                    <ExternalLink className="h-3 w-3 text-primary/50 opacity-0 group-hover/post:opacity-100 transition-opacity shrink-0" />
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Files grid — uses same card style as Grid view */}
+                            <div className="p-3">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                {dateFiles.map((file) => renderFileCard(file))}
+                              </div>
+                            </div>
+                          </Card>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             ) : viewMode === "grid" ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {displayFiles.map((file) => renderFileCard(file))}
+              <div className="space-y-6">
+                {groupFilesByPost(displayFiles).map((group, groupIndex) => (
+                  <div key={group.type === "post" && group.post ? `post-${group.post.id}` : `standalone-${groupIndex}`}>
+                    {/* Post context header for grid view */}
+                    {group.type === "post" && group.post && (
+                      <Link
+                        href={`/post/${group.post.id}`}
+                        className="flex items-center gap-2.5 mb-3 px-3 py-2 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors group/header"
+                      >
+                        <MessageSquare className="h-4 w-4 text-primary shrink-0" />
+                        <p className="text-sm font-medium text-foreground truncate flex-1 group-hover/header:text-primary transition-colors">
+                          {getPostLabel(group.post)}
+                        </p>
+                        <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
+                          <Paperclip className="h-3 w-3" />
+                          {group.files.length}
+                        </span>
+                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/header:opacity-100 transition-opacity shrink-0" />
+                      </Link>
+                    )}
+                    {group.type === "standalone" && (
+                      <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+                        <HardDrive className="h-3.5 w-3.5" />
+                        <span>Standalone files · Not attached to any post</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      {group.files.map((file) => renderFileCard(file))}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
-              <div className="space-y-2">
-                {displayFiles.map((file) => renderFileCard(file))}
+              <div className="space-y-6">
+                {groupFilesByPost(displayFiles).map((group, groupIndex) => (
+                  <div key={group.type === "post" && group.post ? `post-${group.post.id}` : `standalone-${groupIndex}`}>
+                    {/* Post context header for list view */}
+                    {group.type === "post" && group.post && (
+                      <Link
+                        href={`/post/${group.post.id}`}
+                        className="flex items-center gap-2.5 mb-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors group/header"
+                      >
+                        <MessageSquare className="h-4 w-4 text-primary shrink-0" />
+                        <p className="text-sm font-medium text-foreground truncate flex-1 group-hover/header:text-primary transition-colors">
+                          {getPostLabel(group.post)}
+                        </p>
+                        <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
+                          <Paperclip className="h-3 w-3" />
+                          {group.files.length}
+                        </span>
+                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/header:opacity-100 transition-opacity shrink-0" />
+                      </Link>
+                    )}
+                    {group.type === "standalone" && (
+                      <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                        <HardDrive className="h-3.5 w-3.5" />
+                        <span>Standalone files</span>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      {group.files.map((file) => renderFileCard(file))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 

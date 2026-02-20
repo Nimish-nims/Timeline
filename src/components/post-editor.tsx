@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Send, Loader2, X, Tag, Plus, Folder, Inbox, ChevronDown, Check, Paperclip, File, Image as ImageIcon, FileText } from 'lucide-react'
+import { Send, Loader2, X, Tag, Plus, Folder, Inbox, ChevronDown, Check, Paperclip, File, Image as ImageIcon, FileText, Upload, FolderOpen } from 'lucide-react'
 import { useMentionMenuAvatars, type MemberForMention } from '@/lib/mention-menu-avatars'
 
 const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
@@ -76,8 +77,10 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
   const [mentionListReady, setMentionListReady] = useState(false)
   const [attachments, setAttachments] = useState<AttachmentFile[]>([])
   const [uploading, setUploading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const tagInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dropZoneRef = useRef<HTMLDivElement>(null)
 
   useMentionMenuAvatars(membersForMentions)
 
@@ -97,7 +100,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
     fetchTags()
   }, [])
 
-  // Fetch members for @mention suggestions — must complete before editor mounts so Eddyter gets the list
+  // Fetch members for @mention suggestions
   useEffect(() => {
     if (!session?.user?.id) return
     let cancelled = false
@@ -134,7 +137,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
     return () => { cancelled = true }
   }, [session?.user?.id])
 
-  // Sync selected folder when defaultFolderId (e.g. from folder page) changes
+  // Sync selected folder when defaultFolderId changes
   useEffect(() => {
     if (defaultFolderId !== undefined) {
       setSelectedFolderId(defaultFolderId ?? null)
@@ -176,13 +179,20 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
     }
   }
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
+  const processFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+    if (fileArray.length === 0) return
+
+    const MAX_UPLOAD_BYTES = 4 * 1024 * 1024
+    const totalSize = fileArray.reduce((sum, f) => sum + f.size, 0)
+    if (totalSize > MAX_UPLOAD_BYTES) {
+      alert(`Total file size must be under ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB. Try fewer or smaller files.`)
+      return
+    }
 
     setUploading(true)
     const formData = new FormData()
-    Array.from(files).forEach((file) => formData.append("files", file))
+    fileArray.forEach((file) => formData.append("files", file))
 
     try {
       const res = await fetch("/api/media/upload", {
@@ -191,8 +201,15 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
       })
 
       if (!res.ok) {
-        const data = await res.json()
-        alert(data?.error || "Failed to upload files")
+        let message = "Failed to upload files"
+        try {
+          const data = await res.json()
+          message = data?.error || message
+        } catch {
+          if (res.status === 413) message = "Files too large. Try smaller files or fewer at once (under 4 MB total)."
+          else if (res.status === 503) message = "File storage is not configured. Add Supabase env vars (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) in your deployment."
+        }
+        alert(message)
         return
       }
 
@@ -213,7 +230,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
           url: file.url,
           thumbnailUrl: file.thumbnailUrl
         }))
-        setAttachments([...attachments, ...newAttachments])
+        setAttachments(prev => [...prev, ...newAttachments])
       }
 
       if (data.errors && data.errors.length > 0) {
@@ -222,7 +239,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
       }
     } catch (error) {
       console.error("Upload failed:", error)
-      alert("Upload failed. Please try again.")
+      alert("Upload failed. Please try again. If this keeps happening, check that file storage (Supabase) is configured for this deployment.")
     } finally {
       setUploading(false)
       if (fileInputRef.current) {
@@ -230,6 +247,39 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
       }
     }
   }
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    await processFiles(files)
+  }
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only set to false if leaving the drop zone entirely
+    if (dropZoneRef.current && !dropZoneRef.current.contains(e.relatedTarget as Node)) {
+      setIsDragging(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      await processFiles(files)
+    }
+  }, [])
 
   const handleRemoveAttachment = (id: string) => {
     setAttachments(attachments.filter(att => att.id !== id))
@@ -263,6 +313,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
       setTagInput('')
       setShowTagInput(false)
       setAttachments([])
+      setSelectedFolderId(defaultFolderId ?? null)
       setEditorKey(prev => prev + 1)
     } finally {
       setIsPosting(false)
@@ -275,8 +326,32 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
     t => t.includes(tagInput.toLowerCase()) && !tags.includes(t)
   ).slice(0, 5)
 
+  const selectedFolder = folders.find(f => f.id === selectedFolderId)
+  const hasMetadata = tags.length > 0 || selectedFolderId || attachments.length > 0
+
   return (
-    <Card className="mb-6 rounded-xl border border-border/60 bg-card shadow-none">
+    <Card
+      ref={dropZoneRef}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`mb-6 rounded-xl border bg-card shadow-none transition-all duration-200 ${
+        isDragging
+          ? 'border-primary border-dashed ring-2 ring-primary/20 shadow-lg shadow-primary/5'
+          : 'border-border/60'
+      }`}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-20 rounded-xl bg-primary/5 backdrop-blur-[1px] flex flex-col items-center justify-center pointer-events-none">
+          <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3 animate-bounce">
+            <Upload className="h-7 w-7 text-primary" />
+          </div>
+          <p className="text-sm font-semibold text-primary">Drop files to attach</p>
+          <p className="text-xs text-muted-foreground mt-1">Images, documents, and more</p>
+        </div>
+      )}
+
       <CardHeader className="pb-3 pt-5 px-5">
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9 border border-border">
@@ -284,13 +359,14 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
               {getInitials(userName)}
             </AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="font-medium text-foreground text-sm">{userName}</p>
             <p className="text-xs text-muted-foreground">Share your thoughts</p>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 sm:px-5 pb-0 space-y-4">
+
+      <CardContent className="px-4 sm:px-5 pb-0 space-y-3">
         {/* Title Input */}
         <Input
           value={title}
@@ -315,137 +391,208 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
           )}
         </div>
 
-        {/* Tags display + inline input */}
+        {/* ── Metadata Section: Tags, Folder, Attachments ── */}
+        {/* This section appears between the editor and the footer, showing all selected metadata inline */}
+
+        {/* Tags: inline chip input */}
         {(tags.length > 0 || showTagInput) && (
-          <div className="mt-3 space-y-2">
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground"
+          <div className="rounded-lg border border-border/40 bg-muted/10 p-3 space-y-2.5">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <Tag className="h-3 w-3" />
+              Tags
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                >
+                  <span>{tag}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="h-4 w-4 rounded-full hover:bg-primary/20 flex items-center justify-center transition-colors"
                   >
-                    <Tag className="h-3 w-3" />
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="ml-0.5 hover:bg-secondary-foreground/10 rounded p-0.5 transition-colors"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              ))}
+
+              {showTagInput ? (
+                <div className="relative flex-1 min-w-[160px]">
+                  <Input
+                    ref={tagInputRef}
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    placeholder="Type tag, press Enter..."
+                    className="h-7 text-xs border-0 bg-transparent shadow-none focus-visible:ring-0 px-2 placeholder:text-muted-foreground/60"
+                  />
+                  {tagInput && filteredSuggestions.length > 0 && (
+                    <div className="absolute z-10 left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg py-1 max-h-[160px] overflow-y-auto">
+                      {filteredSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          onClick={() => {
+                            setTags([...tags, suggestion])
+                            setTagInput('')
+                          }}
+                          className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground flex items-center gap-2 transition-colors"
+                        >
+                          <Tag className="h-3 w-3 text-muted-foreground" />
+                          <span>{suggestion}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowTagInput(true)}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-dashed border-border/60 transition-colors"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Selected Folder indicator */}
+        {selectedFolderId && !lockFolder && (
+          <div className="flex items-center gap-2.5 rounded-lg border border-border/40 bg-muted/10 px-3 py-2.5">
+            <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+              <FolderOpen className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground leading-none">Saving to</p>
+              <p className="text-sm font-medium text-foreground leading-tight mt-0.5 truncate">
+                {selectedFolder?.name ?? 'Selected folder'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedFolderId(null)}
+              className="h-6 w-6 rounded-full hover:bg-muted flex items-center justify-center transition-colors shrink-0"
+            >
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        )}
+
+        {/* Locked folder indicator */}
+        {lockFolder && defaultFolderId && folders.length > 0 && (
+          <div className="flex items-center gap-2.5 rounded-lg border border-border/40 bg-muted/10 px-3 py-2.5">
+            <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center shrink-0">
+              <Folder className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground leading-none">Folder</p>
+              <p className="text-sm font-medium text-foreground leading-tight mt-0.5 truncate">
+                {folders.find(f => f.id === defaultFolderId)?.name ?? 'Folder'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Attachments */}
+        {attachments.length > 0 && (
+          <div className="rounded-lg border border-border/40 bg-muted/10 p-3 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <Paperclip className="h-3 w-3" />
+                Attachments
+                <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
+                  {attachments.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                Add more
+              </button>
+            </div>
+
+            {/* Image attachments - grid preview */}
+            {attachments.some(a => a.mimeType.startsWith('image/')) && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {attachments.filter(a => a.mimeType.startsWith('image/')).map((attachment) => (
+                  <div key={attachment.id} className="relative group aspect-square rounded-lg overflow-hidden border border-border/50 bg-muted">
+                    {attachment.thumbnailUrl ? (
+                      <img
+                        src={attachment.thumbnailUrl}
+                        alt={attachment.fileName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAttachment(attachment.id)}
+                        className="h-7 w-7 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 flex items-center justify-center shadow-lg"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-[10px] text-white truncate">{attachment.fileName}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
 
-            {showTagInput && (
-              <div className="relative">
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      ref={tagInputRef}
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={handleTagKeyDown}
-                      placeholder="Type a tag and press Enter..."
-                      className="pl-9 h-8 text-sm"
-                    />
+            {/* Non-image attachments - compact list */}
+            {attachments.filter(a => !a.mimeType.startsWith('image/')).map((attachment) => {
+              const FileIcon = getFileIcon(attachment.mimeType)
+              return (
+                <div
+                  key={attachment.id}
+                  className="group flex items-center gap-2.5 p-2 rounded-md border border-border/40 bg-background hover:bg-muted/30 transition-colors"
+                >
+                  <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center shrink-0">
+                    <FileIcon className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <Button
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate text-foreground">{attachment.fileName}</p>
+                    <p className="text-[11px] text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
+                  </div>
+                  <button
                     type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={handleAddTag}
-                    disabled={!tagInput.trim()}
-                    className="h-8 w-8"
+                    onClick={() => handleRemoveAttachment(attachment.id)}
+                    className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 flex items-center justify-center shrink-0"
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setShowTagInput(false)
-                      setTagInput('')
-                    }}
-                    className="h-8 w-8"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
+                    <X className="h-3.5 w-3.5 text-destructive" />
+                  </button>
                 </div>
+              )
+            })}
 
-                {tagInput && filteredSuggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md py-1">
-                    {filteredSuggestions.map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => {
-                          setTags([...tags, suggestion])
-                          setTagInput('')
-                        }}
-                        className="w-full px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2 transition-colors"
-                      >
-                        <Tag className="h-3 w-3 text-muted-foreground" />
-                        <span>{suggestion}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+            {uploading && (
+              <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Uploading...</span>
               </div>
             )}
           </div>
         )}
-
-        {/* Attachments display */}
-        {attachments.length > 0 && (
-          <div className="mt-3 space-y-2">
-            <div className="flex flex-wrap gap-2">
-              {attachments.map((attachment) => {
-                const FileIcon = getFileIcon(attachment.mimeType)
-                const isImage = attachment.mimeType.startsWith('image/')
-                return (
-                  <div
-                    key={attachment.id}
-                    className="relative group flex items-center gap-2 p-2 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors"
-                  >
-                    {isImage && attachment.thumbnailUrl ? (
-                      <img
-                        src={attachment.thumbnailUrl}
-                        alt={attachment.fileName}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 flex items-center justify-center bg-muted rounded">
-                        <FileIcon className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{attachment.fileName}</p>
-                      <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAttachment(attachment.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
-                    >
-                      <X className="h-4 w-4 text-destructive" />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
       </CardContent>
 
-      {/* Unified footer toolbar */}
+      {/* ── Footer Toolbar ── */}
       <CardFooter className="flex flex-col gap-0 p-0 mt-3 border-t border-border/50 bg-muted/20 rounded-b-xl">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 w-full">
-          {/* File upload */}
+        <div className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2.5 w-full">
+          {/* Hidden file input */}
           <input
             ref={fileInputRef}
             type="file"
@@ -454,57 +601,101 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
             onChange={handleFileSelect}
             accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="h-8 px-3 gap-2 text-muted-foreground hover:text-foreground rounded-md"
-          >
-            {uploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Paperclip className="h-4 w-4" />
-            )}
-            <span className="text-sm">
-              {attachments.length > 0 ? `${attachments.length} file${attachments.length > 1 ? 's' : ''}` : 'Attach'}
-            </span>
-          </Button>
 
-          {/* Tag toggle */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowTagInput(!showTagInput)}
-            className="h-8 px-3 gap-2 text-muted-foreground hover:text-foreground rounded-md"
-          >
-            <Tag className="h-4 w-4" />
-            <span className="text-sm">{tags.length > 0 ? `${tags.length} tag${tags.length > 1 ? 's' : ''}` : 'Tags'}</span>
-          </Button>
+          {/* Attach button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={attachments.length > 0 ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className={`h-8 gap-1.5 rounded-lg transition-all ${
+                  attachments.length > 0
+                    ? 'bg-primary/10 text-primary hover:bg-primary/15 border border-primary/20 px-2.5'
+                    : 'text-muted-foreground hover:text-foreground px-2.5'
+                }`}
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Paperclip className="h-4 w-4" />
+                )}
+                {attachments.length > 0 ? (
+                  <span className="text-xs font-medium">{attachments.length}</span>
+                ) : (
+                  <span className="text-xs hidden sm:inline">Attach</span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Attach files (or drag & drop)</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Tags button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={tags.length > 0 ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => {
+                  setShowTagInput(!showTagInput)
+                  if (!showTagInput && tags.length === 0) {
+                    // Opening fresh — will auto-focus via useEffect
+                  }
+                }}
+                className={`h-8 gap-1.5 rounded-lg transition-all ${
+                  tags.length > 0
+                    ? 'bg-primary/10 text-primary hover:bg-primary/15 border border-primary/20 px-2.5'
+                    : 'text-muted-foreground hover:text-foreground px-2.5'
+                }`}
+              >
+                <Tag className="h-4 w-4" />
+                {tags.length > 0 ? (
+                  <span className="text-xs font-medium">{tags.length}</span>
+                ) : (
+                  <span className="text-xs hidden sm:inline">Tags</span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{showTagInput ? 'Hide tags' : 'Add tags'}</p>
+            </TooltipContent>
+          </Tooltip>
 
           {/* Folder picker */}
           {folders.length > 0 && !lockFolder && (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-3 gap-2 text-muted-foreground hover:text-foreground rounded-md"
-                >
-                  <Folder className="h-4 w-4" />
-                  <span className="text-sm truncate max-w-[100px] sm:max-w-[140px]">
-                    {selectedFolderId
-                      ? folders.find(f => f.id === selectedFolderId)?.name ?? 'Folder'
-                      : 'Folder'}
-                  </span>
-                  <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                </Button>
-              </DropdownMenuTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant={selectedFolderId ? "secondary" : "ghost"}
+                      size="sm"
+                      className={`h-8 gap-1.5 rounded-lg transition-all ${
+                        selectedFolderId
+                          ? 'bg-primary/10 text-primary hover:bg-primary/15 border border-primary/20 px-2.5'
+                          : 'text-muted-foreground hover:text-foreground px-2.5'
+                      }`}
+                    >
+                      <Folder className="h-4 w-4" />
+                      <span className="text-xs truncate max-w-[80px] sm:max-w-[120px] hidden sm:inline">
+                        {selectedFolder?.name ?? 'Folder'}
+                      </span>
+                      <ChevronDown className="h-3 w-3 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Save to folder</p>
+                </TooltipContent>
+              </Tooltip>
               <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel>Save to folder</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs">Save to folder</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setSelectedFolderId(null)}
@@ -523,34 +714,55 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
                   >
                     <Folder className="h-4 w-4 text-primary" />
                     <span className="flex-1 truncate">{f.name}</span>
-                    {selectedFolderId === f.id && <Check className="h-4 w-4 text-primary" />}
+                    <span className="text-xs text-muted-foreground tabular-nums">{f._count.posts}</span>
+                    {selectedFolderId === f.id && <Check className="h-4 w-4 text-primary ml-1" />}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
 
-          {/* Locked folder indicator */}
-          {lockFolder && defaultFolderId && folders.length > 0 && (
-            <div className="flex items-center gap-2 h-8 px-3 rounded-md text-muted-foreground text-sm">
-              <Folder className="h-4 w-4" />
-              <span className="truncate max-w-[100px] sm:max-w-[140px]">{folders.find(f => f.id === defaultFolderId)?.name ?? 'Folder'}</span>
+          {/* Spacer */}
+          <div className="flex-1 min-w-2" />
+
+          {/* Summary chips - compact indicators of what's attached */}
+          {hasMetadata && (
+            <div className="hidden sm:flex items-center gap-1.5 mr-2">
+              {attachments.length > 0 && (
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Paperclip className="h-3 w-3" />
+                  {attachments.length} file{attachments.length > 1 ? 's' : ''}
+                </span>
+              )}
+              {tags.length > 0 && (
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  {attachments.length > 0 && <span className="text-border">|</span>}
+                  <Tag className="h-3 w-3" />
+                  {tags.length} tag{tags.length > 1 ? 's' : ''}
+                </span>
+              )}
+              {selectedFolderId && (
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  {(attachments.length > 0 || tags.length > 0) && <span className="text-border">|</span>}
+                  <Folder className="h-3 w-3" />
+                  <span className="truncate max-w-[60px]">{selectedFolder?.name}</span>
+                </span>
+              )}
             </div>
           )}
 
-          {/* Spacer + Post button */}
-          <div className="flex-1 min-w-4" />
+          {/* Post button */}
           <Button
             onClick={handlePost}
             disabled={isPosting || !hasContent}
             size="sm"
-            className="h-8 px-4 rounded-md gap-2"
+            className="h-8 px-4 rounded-lg gap-2 shadow-sm"
           >
             {isPosting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <Send className="h-4 w-4" />
+                <Send className="h-3.5 w-3.5" />
                 Post
               </>
             )}

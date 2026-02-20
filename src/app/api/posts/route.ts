@@ -371,15 +371,6 @@ export async function POST(request: NextRequest) {
       } catch (_) {
         // keep postToReturn with empty shares/mentions/attachments
       }
-    } else if (attachmentConnections.length > 0) {
-      // Post was created with attachments but we didn't refetch; create response with URLs from linked media
-      const mediaFiles = await prisma.mediaFile.findMany({
-        where: { id: { in: attachmentConnections.map(({ id }) => id) } },
-        select: { id: true, fileName: true, fileSize: true, mimeType: true, storageKey: true, thumbnailUrl: true }
-      })
-      postToReturn.attachments = mediaFiles.map(mf => ({
-        mediaFile: { ...mf, url: getPublicUrl(mf.storageKey) }
-      }))
     }
 
     return NextResponse.json(postToReturn)

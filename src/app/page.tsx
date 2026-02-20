@@ -65,6 +65,17 @@ interface Post {
   tags?: TagType[]
   shares?: { user: SharedUser }[]
   mentions?: { user: SharedUser }[]
+  attachments?: {
+    mediaFile: {
+      id: string
+      fileName: string
+      fileSize: number
+      mimeType: string
+      storageKey: string
+      thumbnailUrl?: string | null
+      url?: string
+    }
+  }[]
   folderId?: string | null
   folder?: { id: string; name: string } | null
   _count?: {
@@ -878,6 +889,7 @@ export default function Home() {
                   folderId: post.folderId,
                   folder: post.folder,
                   mentions: post.mentions,
+                  attachments: post.attachments,
                   _count: post._count,
                 }))}
                 onDelete={handleDelete}

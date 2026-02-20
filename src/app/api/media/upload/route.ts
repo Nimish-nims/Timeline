@@ -6,7 +6,10 @@ import { supabase, MEDIA_BUCKET, MAX_FILE_SIZE, isAllowedMimeType, getPublicUrl 
 export async function POST(request: NextRequest) {
   try {
     if (!supabase) {
-      return NextResponse.json({ error: "Media storage not configured" }, { status: 503 })
+      return NextResponse.json(
+        { error: "File storage is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your deployment environment." },
+        { status: 503 }
+      )
     }
     const session = await auth()
     if (!session?.user?.id) {
@@ -15,6 +18,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const files = formData.getAll("files") as File[]
+    const threadDateKey = formData.get("threadDateKey") as string | null
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: "No files provided" }, { status: 400 })
@@ -67,6 +71,13 @@ export async function POST(request: NextRequest) {
           _count: { select: { shares: true } },
         },
       })
+
+      // If uploaded from a file thread, create a thread entry to associate file with that thread
+      if (threadDateKey) {
+        await prisma.fileThreadEntry.create({
+          data: { dateKey: threadDateKey, mediaFileId: mediaFile.id },
+        }).catch(() => {}) // ignore duplicate if file date matches thread date
+      }
 
       uploaded.push({
         ...mediaFile,

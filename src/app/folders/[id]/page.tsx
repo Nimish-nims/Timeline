@@ -27,6 +27,17 @@ interface Post {
   tags?: { id: string; name: string }[]
   shares?: { user: { id: string; name: string; email: string; image?: string | null } }[]
   mentions?: { user: { id: string; name: string; email: string; image?: string | null } }[]
+  attachments?: {
+    mediaFile: {
+      id: string
+      fileName: string
+      fileSize: number
+      mimeType: string
+      storageKey: string
+      thumbnailUrl?: string | null
+      url?: string
+    }
+  }[]
   folderId?: string | null
   folder?: { id: string; name: string } | null
   _count?: { comments: number }
@@ -307,6 +318,7 @@ export default function FolderViewPage() {
                 folderId: post.folderId,
                 folder: post.folder,
                 mentions: post.mentions,
+                attachments: post.attachments,
                 _count: post._count,
               }))}
               onDelete={handleDelete}

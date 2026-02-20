@@ -29,6 +29,7 @@ model User {
   mediaFiles    MediaFile[]  @relation("UserMediaFiles")
   sharedMedia   MediaShare[] @relation("SharedMediaFiles")
   folders       Folder[]
+  fileThreadComments FileThreadComment[] @relation("UserFileThreadComments")
 }
 
 model Folder {
@@ -163,9 +164,10 @@ model MediaFile {
   thumbnailUrl String?
   uploaderId   String
   uploader     User             @relation("UserMediaFiles", fields: [uploaderId], references: [id], onDelete: Cascade)
-  shares       MediaShare[]
-  attachments  PostAttachment[]
-  createdAt    DateTime         @default(now())
+  shares        MediaShare[]
+  attachments   PostAttachment[]
+  threadEntries FileThreadEntry[]
+  createdAt     DateTime         @default(now())
 
   @@index([uploaderId])
   @@index([uploaderId, createdAt])
@@ -194,4 +196,28 @@ model PostAttachment {
   @@unique([postId, mediaFileId])
   @@index([postId])
   @@index([mediaFileId])
+}
+
+model FileThreadComment {
+  id        String   @id @default(cuid())
+  content   String
+  dateKey   String   // ISO date string e.g. "2026-02-20"
+  authorId  String
+  author    User     @relation("UserFileThreadComments", fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dateKey])
+  @@index([authorId])
+}
+
+model FileThreadEntry {
+  id          String    @id @default(cuid())
+  dateKey     String    // Thread date e.g. "2026-02-15"
+  mediaFileId String
+  mediaFile   MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+  addedAt     DateTime  @default(now())
+
+  @@unique([dateKey, mediaFileId])
+  @@index([dateKey])
 }

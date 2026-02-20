@@ -72,11 +72,30 @@ export async function GET(
       })
     }
 
+    // Fetch file statistics
+    const [filesUploadedCount, filesSharedCount, storageUsed] = await Promise.all([
+      prisma.mediaFile.count({
+        where: { uploaderId: id },
+      }),
+      prisma.mediaShare.count({
+        where: { userId: id },
+      }),
+      prisma.mediaFile.aggregate({
+        where: { uploaderId: id },
+        _sum: { fileSize: true },
+      }),
+    ])
+
     return NextResponse.json({
       user,
       posts,
       sharedWithMeCount,
-      isOwnProfile: id === session.user.id
+      isOwnProfile: id === session.user.id,
+      fileStats: {
+        filesUploaded: filesUploadedCount,
+        filesSaved: filesSharedCount,
+        spaceUsed: storageUsed._sum.fileSize || 0,
+      },
     })
   } catch (error) {
     console.error("Failed to fetch user profile:", error)

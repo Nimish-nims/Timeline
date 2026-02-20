@@ -22,6 +22,9 @@ import {
   Maximize2,
   Camera,
   X,
+  Upload,
+  FolderDown,
+  HardDrive,
 } from 'lucide-react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LinkPreviewHover } from 'eddyter'
@@ -106,6 +109,14 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  const size = bytes / Math.pow(1024, i)
+  return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
+
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { data: session, status, update: updateSession } = useSession()
@@ -113,6 +124,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [user, setUser] = useState<UserProfile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [sharedWithMeCount, setSharedWithMeCount] = useState(0)
+  const [fileStats, setFileStats] = useState<{ filesUploaded: number; filesSaved: number; spaceUsed: number }>({ filesUploaded: 0, filesSaved: 0, spaceUsed: 0 })
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -151,6 +163,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
       setUser(data.user)
       setPosts(data.posts)
       setSharedWithMeCount(data.sharedWithMeCount)
+      setFileStats(data.fileStats || { filesUploaded: 0, filesSaved: 0, spaceUsed: 0 })
       setIsOwnProfile(data.isOwnProfile)
     } catch (err) {
       console.error('Failed to fetch profile:', err)
@@ -364,6 +377,31 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                       <span className="text-xs font-medium">Role</span>
                     </div>
                     <p className="text-lg font-semibold text-foreground capitalize">{user.role}</p>
+                  </div>
+                </div>
+
+                {/* File Stats */}
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
+                      <Upload className="h-4 w-4" />
+                      <span className="text-xs font-medium">Files Uploaded</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{fileStats.filesUploaded}</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
+                      <FolderDown className="h-4 w-4" />
+                      <span className="text-xs font-medium">Files Saved</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{fileStats.filesSaved}</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
+                      <HardDrive className="h-4 w-4" />
+                      <span className="text-xs font-medium">Space Used</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{formatFileSize(fileStats.spaceUsed)}</p>
                   </div>
                 </div>
               </CardContent>
