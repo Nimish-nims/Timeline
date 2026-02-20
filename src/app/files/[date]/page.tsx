@@ -237,7 +237,7 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
   const [mentionUserList, setMentionUserList] = useState<string[]>([])
 
   // File view toggle
-  const [fileViewMode, setFileViewMode] = useState<"cards" | "grid">("cards")
+  const [fileViewMode, setFileViewMode] = useState<"timeline" | "cards" | "grid">("timeline")
 
   // Upload state
   const [uploading, setUploading] = useState(false)
@@ -619,9 +619,18 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
           {/* View toggle */}
           <div className="flex items-center border rounded-lg shrink-0">
             <Button
-              variant={fileViewMode === "cards" ? "secondary" : "ghost"}
+              variant={fileViewMode === "timeline" ? "secondary" : "ghost"}
               size="icon"
               className="h-8 w-8 rounded-r-none"
+              onClick={() => setFileViewMode("timeline")}
+              title="Timeline view"
+            >
+              <CalendarDays className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={fileViewMode === "cards" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-8 w-8 rounded-none border-x border-border/50"
               onClick={() => setFileViewMode("cards")}
               title="Card view"
             >
@@ -762,8 +771,99 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
                       </Badge>
                     </div>
 
-                    {/* File display — card view or compact grid */}
-                    {fileViewMode === "cards" ? (
+                    {/* File display — timeline, card view, or compact grid */}
+                    {fileViewMode === "timeline" ? (
+                      <div className="relative pl-8 ml-1">
+                        <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-border rounded-full" aria-hidden />
+                        {[...activity.files]
+                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                          .map((file) => {
+                          const isImage = file.mimeType.startsWith("image/")
+                          const isVideo = file.mimeType.startsWith("video/")
+                          const FileIcon = getFileIcon(file.mimeType)
+                          return (
+                            <div key={file.id} className="relative flex gap-4 items-start pb-6 last:pb-0">
+                              <div className="absolute left-0 w-3 h-3 rounded-full bg-primary border-2 border-background -translate-x-1/2 top-3 shrink-0" aria-hidden />
+                              <span className="text-xs text-muted-foreground w-32 shrink-0 pt-2.5 whitespace-nowrap">
+                                {formatDate(file.createdAt)}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <Card className="overflow-hidden group hover:shadow-md transition-shadow">
+                                  <div className="flex">
+                                    <div
+                                      className="w-20 h-20 shrink-0 bg-muted flex items-center justify-center cursor-pointer overflow-hidden"
+                                      onClick={() => setPreviewFile(file)}
+                                    >
+                                      {isImage && file.url ? (
+                                        <img src={file.url} alt={file.fileName} className="h-full w-full object-cover" />
+                                      ) : isVideo ? (
+                                        <Film className="h-6 w-6 text-muted-foreground" />
+                                      ) : (
+                                        <FileIcon className="h-6 w-6 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                    <CardContent className="p-3 flex-1 min-w-0 flex flex-col justify-center">
+                                      <p className="text-sm font-medium truncate" title={file.fileName}>
+                                        {file.fileName}
+                                      </p>
+                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                        <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+                                        {file._count && file._count.shares > 0 && (
+                                          <Badge variant="secondary" className="text-[10px] h-5">
+                                            <Users className="h-2.5 w-2.5 mr-0.5" />
+                                            {file._count.shares}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 mt-2">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPreviewFile(file)}>
+                                          <Eye className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(file)}>
+                                          <Download className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openShareDialog(file)}>
+                                          <Share2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                                              <MoreVertical className="h-3.5 w-3.5" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => setPreviewFile(file)}>
+                                              <Eye className="mr-2 h-4 w-4" />
+                                              Preview
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDownload(file)}>
+                                              <Download className="mr-2 h-4 w-4" />
+                                              Download
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => openShareDialog(file)}>
+                                              <Share2 className="mr-2 h-4 w-4" />
+                                              Share
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                              onClick={() => setDeleteFileState(file)}
+                                              className="text-destructive focus:text-destructive"
+                                            >
+                                              <Trash2 className="mr-2 h-4 w-4" />
+                                              Delete
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
+                                    </CardContent>
+                                  </div>
+                                </Card>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : fileViewMode === "cards" ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pl-9">
                         {activity.files.map((file) => {
                           const isImage = file.mimeType.startsWith("image/")
