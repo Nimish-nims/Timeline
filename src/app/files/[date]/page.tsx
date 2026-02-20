@@ -952,7 +952,8 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
                 })}
               </div>
             ) : (
-            activities.map((activity, idx) => {
+            <>
+            {activities.map((activity, idx) => {
               if (activity.type === "file-group") {
                 return (
                   <div key={`fg-${activity.date}-${idx}`} className="space-y-3">
@@ -1200,6 +1201,7 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
             })}
 
             <div ref={activityEndRef} />
+            </>
             )}
           </div>
         )}
