@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, Calendar, FileText, Lock, ArrowLeft, User, MessageSquare, ChevronDown, ChevronUp } from "lucide-react"
 import { LinkPreviewHover } from "eddyter"
+import { getEddyterApiKey } from "@/lib/eddyter-key"
 
 interface Comment {
   id: string
@@ -254,7 +255,7 @@ export default function PublicTimelinePage() {
                     </div>
                   </div>
                   <LinkPreviewHover
-                    apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'}
+                    apiKey={getEddyterApiKey()}
                     enabled={true}
                   >
                     <div
@@ -313,7 +314,7 @@ export default function PublicTimelinePage() {
                                   {comment.author.name}
                                 </span>
                                 <LinkPreviewHover
-                                  apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'}
+                                  apiKey={getEddyterApiKey()}
                                   enabled={true}
                                 >
                                   <div

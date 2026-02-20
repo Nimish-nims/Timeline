@@ -27,6 +27,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { LinkPreviewHover } from 'eddyter'
 import { addLazyLoadingToImages } from '@/lib/lazy-images'
+import { getEddyterApiKey } from '@/lib/eddyter-key'
 
 const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
   ssr: false,
@@ -908,7 +909,7 @@ export function Timeline({
                         </h3>
                       )}
                       <LinkPreviewHover
-                        apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'}
+                        apiKey={getEddyterApiKey()}
                         enabled={true}
                       >
                         <div
@@ -1192,7 +1193,7 @@ export function Timeline({
                                             </div>
                                             {/* Comment content */}
                                             <LinkPreviewHover
-                                              apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'}
+                                              apiKey={getEddyterApiKey()}
                                               enabled={true}
                                             >
                                               <div

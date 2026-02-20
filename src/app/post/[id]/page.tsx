@@ -46,6 +46,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { LinkPreviewHover } from 'eddyter'
+import { getEddyterApiKey } from '@/lib/eddyter-key'
 
 const EddyterWrapper = dynamic(() => import('@/components/eddyter-wrapper'), {
   ssr: false,
@@ -516,7 +517,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                         <h1 className="text-2xl font-bold tracking-tight mb-4">{post.title}</h1>
                       )}
                       <LinkPreviewHover
-                        apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'}
+                        apiKey={getEddyterApiKey()}
                         enabled={true}
                       >
                         <div
@@ -714,7 +715,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                                     </span>
                                   </div>
                                   <LinkPreviewHover
-                                    apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'}
+                                    apiKey={getEddyterApiKey()}
                                     enabled={true}
                                   >
                                     <div
@@ -904,7 +905,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                     <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                       <div className="rounded-xl border bg-card p-6 shadow-sm">
                         <LinkPreviewHover
-                          apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'}
+                          apiKey={getEddyterApiKey()}
                           enabled={true}
                         >
                           <div

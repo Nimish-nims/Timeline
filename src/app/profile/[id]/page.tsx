@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LinkPreviewHover } from 'eddyter'
+import { getEddyterApiKey } from '@/lib/eddyter-key'
 import {
   Dialog,
   DialogContent,
@@ -430,7 +431,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                           </h3>
                         )}
                         <LinkPreviewHover
-                          apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'}
+                          apiKey={getEddyterApiKey()}
                           enabled={true}
                         >
                           <div

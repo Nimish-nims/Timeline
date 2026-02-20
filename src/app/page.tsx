@@ -233,6 +233,17 @@ export default function Home() {
     }
   }, [session])
 
+  // Refetch posts when tag filter changes so server returns correct list (including older posts with that tag)
+  const tagFilterInitialized = useRef(false)
+  useEffect(() => {
+    if (!session || activeTab !== 'all') return
+    if (!tagFilterInitialized.current) {
+      tagFilterInitialized.current = true
+      return
+    }
+    fetchPosts()
+  }, [filterByTag])
+
 
   // Close tag dropdown when clicking outside
   useEffect(() => {
@@ -272,10 +283,17 @@ export default function Home() {
       const params = new URLSearchParams()
       params.set('limit', '20')
       if (cursor) params.set('cursor', cursor)
+      if (filterByTag) params.set('tag', filterByTag)
 
       const res = await fetch(`/api/posts?${params.toString()}`)
       const data = await res.json()
-      
+
+      if (!res.ok) {
+        console.error('Posts API error:', data.error || res.status)
+        if (!append) setPosts([])
+        return
+      }
+
       // Handle new paginated response format
       if (data.posts && Array.isArray(data.posts)) {
         if (append) {
@@ -283,9 +301,9 @@ export default function Home() {
         } else {
           setPosts(data.posts)
         }
-        setNextCursor(data.nextCursor)
-        setHasMore(data.hasMore)
-        setTotalPostCount(data.totalCount || 0)
+        setNextCursor(data.nextCursor ?? null)
+        setHasMore(data.hasMore ?? false)
+        setTotalPostCount(data.totalCount ?? 0)
       } else if (Array.isArray(data)) {
         // Fallback for old format
         setPosts(append ? prev => [...prev, ...data] : data)
@@ -712,7 +730,11 @@ export default function Home() {
         <div className="flex items-center justify-between gap-2 sm:gap-4 border-b border-border mt-4 sm:mt-6 mb-6 overflow-x-auto">
           <div className="flex items-center gap-0 min-w-0 flex-1 sm:flex-initial">
             <button
-              onClick={() => setActiveTab('all')}
+              onClick={() => {
+                setActiveTab('all')
+                // Refetch so All Posts list is fresh (including older posts)
+                fetchPosts()
+              }}
               className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px shrink-0 ${
                 activeTab === 'all'
                   ? 'border-primary text-primary'

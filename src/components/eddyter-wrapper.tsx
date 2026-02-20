@@ -8,6 +8,7 @@ import {
 } from 'eddyter'
 import 'eddyter/style.css'
 import { Zap, Clock } from 'lucide-react'
+import { getEddyterApiKey } from '@/lib/eddyter-key'
 
 interface EddyterWrapperProps {
   onChange: (html: string) => void
@@ -40,8 +41,7 @@ export default function EddyterWrapper({
     setIsClient(true)
   }, [])
 
-  // API key from environment variable
-  const apiKey = process.env.NEXT_PUBLIC_EDDYTER_API_KEY || ''
+  const apiKey = getEddyterApiKey()
 
   // Detect when ProseMirror editor is actually rendered and interactive
   useEffect(() => {

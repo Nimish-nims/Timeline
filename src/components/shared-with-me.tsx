@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { LinkPreviewHover } from 'eddyter'
+import { getEddyterApiKey } from '@/lib/eddyter-key'
 
 interface Tag {
   id: string
@@ -320,7 +321,7 @@ export function SharedWithMe({ currentUserId }: SharedWithMeProps) {
                 </h3>
               )}
               <LinkPreviewHover
-                apiKey={process.env.NEXT_PUBLIC_EDDYTER_API_KEY || 'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'}
+                apiKey={getEddyterApiKey()}
                 enabled={true}
               >
                 <div
