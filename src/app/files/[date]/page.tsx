@@ -158,6 +158,7 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+/** Relative time for timeline: "Added just now", "5 Hours ago", etc. */
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
   const now = new Date()
@@ -166,10 +167,10 @@ function formatDate(dateStr: string): string {
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)
 
-  if (diffMins < 1) return "Just now"
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
+  if (diffMins < 1) return "Added just now"
+  if (diffMins < 60) return `${diffMins} ${diffMins === 1 ? "minute" : "minutes"} ago`
+  if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "Hour" : "Hours"} ago`
+  if (diffDays < 7) return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -565,14 +566,14 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
     return (
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-          <div className="container max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+          <div className="container mx-auto max-w-[90rem] px-4 sm:px-6 h-14 flex items-center gap-3">
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm font-medium">Files</span>
           </div>
         </div>
-        <div className="container max-w-5xl mx-auto px-4 sm:px-6 py-16">
+        <div className="container mx-auto max-w-[90rem] px-4 sm:px-6 py-16">
           <div className="flex flex-col items-center justify-center text-center">
             <CalendarDays className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <p className="text-lg font-medium text-muted-foreground">Invalid date</p>
@@ -594,7 +595,7 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
     <div className="min-h-screen bg-background">
       {/* Sticky header */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+        <div className="container mx-auto max-w-[90rem] px-4 sm:px-6 h-14 flex items-center gap-3">
           <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -650,7 +651,7 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
       </div>
 
       {/* Content */}
-      <div className="container max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="container mx-auto max-w-[90rem] px-4 sm:px-6 py-6 space-y-6">
         {/* Upload area */}
         <div
           className={`relative border-2 border-dashed rounded-xl p-4 sm:p-6 text-center transition-colors ${
