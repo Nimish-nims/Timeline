@@ -17,7 +17,10 @@ export async function GET(
     const { id } = await params
 
     // Try full query first, fallback to minimal if mentions/shares tables don't exist
-    let post
+    type PostWithAttachments = Awaited<ReturnType<typeof prisma.post.findUnique>> & {
+      attachments?: Array<{ mediaFile: { storageKey: string; [k: string]: unknown } }>
+    }
+    let post: PostWithAttachments | null = null
     try {
       post = await prisma.post.findUnique({
         where: { id },
@@ -93,7 +96,7 @@ export async function GET(
             select: { comments: true }
           }
         }
-      })
+      } as Parameters<typeof prisma.post.findUnique>[0]) as PostWithAttachments | null
     } catch (relationErr) {
       // Fallback: try without mentions/shares if those tables don't exist
       console.warn("Failed to fetch post with all relations, trying minimal:", relationErr)
@@ -140,7 +143,7 @@ export async function GET(
           shares: [],
           mentions: [],
           attachments: []
-        }
+        } as PostWithAttachments
       }
     }
 

@@ -94,21 +94,22 @@ export async function PUT(
     }
 
     // Use minimal include so update succeeds even if PostMention table doesn't exist
+    const updateData = {
+      ...(title !== undefined && { title: title?.trim() || null }),
+      content,
+      ...(folderId !== undefined && { folderId: folderId ?? null }),
+      ...(tags !== undefined && {
+        tags: {
+          set: tagConnections
+        }
+      }),
+      ...(attachmentUpdate !== undefined && {
+        attachments: attachmentUpdate
+      })
+    } as Parameters<typeof prisma.post.update>[0]['data']
     const updatedPost = await prisma.post.update({
       where: { id },
-      data: {
-        ...(title !== undefined && { title: title?.trim() || null }),
-        content,
-        ...(folderId !== undefined && { folderId }),
-        ...(tags !== undefined && {
-          tags: {
-            set: tagConnections
-          }
-        }),
-        ...(attachmentUpdate !== undefined && {
-          attachments: attachmentUpdate
-        })
-      },
+      data: updateData,
       include: {
         author: {
           select: {
@@ -202,18 +203,22 @@ export async function PUT(
           },
           _count: { select: { comments: true } }
         }
-      })
-      if (refetched) {
+      } as Parameters<typeof prisma.post.findUnique>[0])
+      type RefetchedWithAttachments = NonNullable<typeof refetched> & {
+        attachments?: Array<{ mediaFile: { storageKey: string; [k: string]: unknown } }>
+      }
+      const refetchedTyped = refetched as RefetchedWithAttachments | null
+      if (refetchedTyped) {
         postToReturn = {
-          ...refetched,
-          attachments: refetched.attachments?.map(attachment => ({
+          ...refetchedTyped,
+          attachments: (refetchedTyped.attachments ?? []).map(attachment => ({
             ...attachment,
             mediaFile: {
               ...attachment.mediaFile,
               url: getPublicUrl(attachment.mediaFile.storageKey)
             }
-          })) || []
-        }
+          }))
+        } as unknown as typeof postToReturn
       }
     } catch (_) {
       // keep postToReturn with empty shares/mentions/attachments
