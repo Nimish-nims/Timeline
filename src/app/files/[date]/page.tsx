@@ -687,10 +687,10 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
       <div className="container mx-auto max-w-[90rem] px-4 sm:px-6 py-6 space-y-6">
         {/* Upload area */}
         <div
-          className={`relative border-2 border-dashed rounded-xl p-4 sm:p-6 text-center transition-colors ${
+          className={`relative border border-dashed rounded-xl p-3 sm:p-4 text-center transition-colors ${
             dragOver
               ? "border-primary bg-primary/5"
-              : "border-muted-foreground/25 hover:border-muted-foreground/50"
+              : "border-muted-foreground/20 hover:border-muted-foreground/40"
           }`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -705,8 +705,8 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
           />
 
           {uploading ? (
-            <div className="space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+            <div className="space-y-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
               <p className="text-sm font-medium">Uploading files...</p>
               <div className="max-w-xs mx-auto">
                 <Progress value={uploadProgress} />
@@ -714,23 +714,15 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
               <p className="text-xs text-muted-foreground">{uploadProgress}%</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              <CloudUpload className="h-8 w-8 text-muted-foreground mx-auto" />
-              <div>
-                <p className="text-sm font-medium">
-                  Drag and drop files here
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  or click to browse &middot; Photos, videos, documents up to 50MB each
-                </p>
-              </div>
-              <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
-                <Upload className="h-3.5 w-3.5 mr-1.5" />
-                Choose Files
-              </Button>
-              <p className="text-xs text-muted-foreground/70 italic mt-1">
-                Files will be added to this thread
+            <div className="flex items-center justify-center gap-3 py-1">
+              <CloudUpload className="h-5 w-5 text-muted-foreground shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Drop files here or
               </p>
+              <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline" className="h-7 text-xs">
+                <Upload className="h-3 w-3 mr-1.5" />
+                Browse
+              </Button>
             </div>
           )}
         </div>
@@ -780,85 +772,115 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
           <div className="space-y-6">
             {fileViewMode === "timeline" ? (
               <div className="relative pl-8 ml-1">
-                <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-border rounded-full" aria-hidden />
+                {/* Timeline line with gradient fade */}
+                <div
+                  className="absolute left-[7px] top-0 bottom-0 w-0.5 rounded-full"
+                  style={{ background: "linear-gradient(to bottom, transparent 0%, var(--border) 2rem, var(--border) calc(100% - 2rem), transparent 100%)" }}
+                  aria-hidden
+                />
                 {flattenedTimelineItems.map((entry) => {
                   if (entry.type === "file-group") {
                     const { files, timestamp } = entry
                     if (files.length === 0) return null
                     return (
-                      <div key={`fg-${timestamp}-${files[0].id}`} className="relative flex gap-4 items-start pb-6 last:pb-0">
-                        <div className="absolute left-0 w-3 h-3 rounded-full bg-primary border-2 border-background -translate-x-1/2 top-3 shrink-0" aria-hidden />
-                        <span className="text-xs text-muted-foreground w-32 shrink-0 pt-2.5 whitespace-nowrap">
-                          {formatDate(timestamp)}
-                        </span>
-                        <div className="flex-1 min-w-0 flex flex-wrap gap-3">
+                      <div key={`fg-${timestamp}-${files[0].id}`} className="relative pb-8 last:pb-0">
+                        {/* Timeline dot */}
+                        <div className="absolute left-0 -translate-x-1/2 top-1 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-primary/10 shrink-0" aria-hidden />
+
+                        {/* Timestamp + file count row */}
+                        <div className="flex items-center gap-2 mb-3 ml-4">
+                          <span className="text-xs text-muted-foreground bg-muted/60 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                            {formatDate(timestamp)}
+                          </span>
+                          <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                            {files.length} {files.length === 1 ? "file" : "files"}
+                          </Badge>
+                        </div>
+
+                        {/* Vertical card grid */}
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 ml-4">
                           {files.map((file) => {
                             const isImage = file.mimeType.startsWith("image/")
                             const isVideo = file.mimeType.startsWith("video/")
                             const FileIcon = getFileIcon(file.mimeType)
                             return (
-                              <Card key={file.id} className="overflow-hidden group hover:shadow-md transition-shadow w-[180px] shrink-0">
-                                <div className="flex">
-                                  <div
-                                    className="w-16 h-16 shrink-0 bg-muted flex items-center justify-center cursor-pointer overflow-hidden"
-                                    onClick={() => setPreviewFile(file)}
-                                  >
-                                    {isImage && file.url ? (
-                                      <img src={file.url} alt={file.fileName} className="h-full w-full object-cover" />
-                                    ) : isVideo ? (
-                                      <Film className="h-5 w-5 text-muted-foreground" />
-                                    ) : (
-                                      <FileIcon className="h-5 w-5 text-muted-foreground" />
-                                    )}
-                                  </div>
-                                  <CardContent className="p-2 flex-1 min-w-0 flex flex-col justify-center">
-                                    <p className="text-xs font-medium truncate" title={file.fileName}>
-                                      {file.fileName}
-                                    </p>
-                                    <span className="text-[10px] text-muted-foreground">{formatFileSize(file.fileSize)}</span>
-                                    <div className="flex items-center gap-0.5 mt-1">
-                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPreviewFile(file)}>
-                                        <Eye className="h-3 w-3" />
-                                      </Button>
-                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDownload(file)}>
-                                        <Download className="h-3 w-3" />
-                                      </Button>
-                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openShareDialog(file)}>
-                                        <Share2 className="h-3 w-3" />
-                                      </Button>
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6">
-                                            <MoreVertical className="h-3 w-3" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => setPreviewFile(file)}>
-                                            <Eye className="mr-2 h-4 w-4" />
-                                            Preview
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleDownload(file)}>
-                                            <Download className="mr-2 h-4 w-4" />
-                                            Download
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => openShareDialog(file)}>
-                                            <Share2 className="mr-2 h-4 w-4" />
-                                            Share
-                                          </DropdownMenuItem>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem
-                                            onClick={() => setDeleteFileState(file)}
-                                            className="text-destructive focus:text-destructive"
-                                          >
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
+                              <div key={file.id} className="group relative rounded-xl overflow-hidden border bg-card hover:shadow-lg transition-all">
+                                {/* Thumbnail */}
+                                <div
+                                  className="aspect-square bg-muted flex items-center justify-center cursor-pointer overflow-hidden"
+                                  onClick={() => setPreviewFile(file)}
+                                >
+                                  {isImage && file.url ? (
+                                    <img src={file.url} alt={file.fileName} className="h-full w-full object-cover" />
+                                  ) : isVideo ? (
+                                    <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
+                                      <Film className="h-8 w-8" />
+                                      <span className="text-[10px]">Video</span>
                                     </div>
-                                  </CardContent>
+                                  ) : (
+                                    <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
+                                      <FileIcon className="h-8 w-8" />
+                                      <span className="text-[10px] uppercase">{file.mimeType.split("/")[1]?.slice(0, 4)}</span>
+                                    </div>
+                                  )}
+                                  {/* Hover overlay with actions */}
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 pointer-events-none group-hover:pointer-events-auto">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20 rounded-full" onClick={(e) => { e.stopPropagation(); setPreviewFile(file) }}>
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20 rounded-full" onClick={(e) => { e.stopPropagation(); handleDownload(file) }}>
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20 rounded-full" onClick={(e) => { e.stopPropagation(); openShareDialog(file) }}>
+                                      <Share2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  {/* Share badge */}
+                                  {file._count && file._count.shares > 0 && (
+                                    <div className="absolute top-1.5 right-1.5">
+                                      <Badge variant="secondary" className="text-[10px] h-5 px-1 bg-background/80 backdrop-blur-sm">
+                                        <Users className="h-2.5 w-2.5 mr-0.5" />{file._count.shares}
+                                      </Badge>
+                                    </div>
+                                  )}
                                 </div>
-                              </Card>
+                                {/* File info + menu */}
+                                <div className="px-2.5 py-2 flex items-center gap-1.5">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate" title={file.fileName}>{file.fileName}</p>
+                                    <span className="text-[10px] text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <MoreVertical className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => setPreviewFile(file)}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Preview
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleDownload(file)}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Download
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openShareDialog(file)}>
+                                        <Share2 className="mr-2 h-4 w-4" />
+                                        Share
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => setDeleteFileState(file)}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </div>
                             )
                           })}
                         </div>
@@ -869,82 +891,88 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
                   const isOwn = comment.authorId === currentUserId
                   const isEditing = editingCommentId === comment.id
                   return (
-                    <div key={`comment-${comment.id}`} className="relative flex gap-4 items-start pb-6 last:pb-0 group/comment">
-                      <div className="absolute left-0 w-3 h-3 rounded-full bg-primary border-2 border-background -translate-x-1/2 top-3 shrink-0" aria-hidden />
-                      <span className="text-xs text-muted-foreground w-32 shrink-0 pt-2.5 whitespace-nowrap">
-                        {formatDate(comment.createdAt)}
-                      </span>
-                      <div className="flex-1 min-w-0 flex gap-3">
-                        <Avatar className="h-8 w-8 shrink-0 mt-0.5">
-                          {comment.author.image ? <AvatarImage src={comment.author.image} /> : null}
-                          <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                            {getInitials(comment.author.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline gap-2 mb-0.5">
-                            <span className="text-sm font-medium truncate">{comment.author.name}</span>
-                            {comment.createdAt !== comment.updatedAt && (
-                              <span className="text-xs text-muted-foreground/60 italic">(edited)</span>
-                            )}
-                          </div>
-                          {isEditing ? (
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Pencil className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm font-medium">Edit comment</span>
-                              </div>
-                              <div className="rounded-lg border overflow-hidden bg-background [&_.eddyter-container]:!max-w-full [&_.ProseMirror]:!max-w-full">
-                                <EddyterWrapper
-                                  onChange={setEditingCommentContent}
-                                  placeholder="Edit your comment..."
-                                  initialContent={comment.content}
-                                  key={`edit-comment-${comment.id}`}
-                                  showLoadTime={false}
-                                />
-                              </div>
-                              <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="ghost" onClick={() => { setEditingCommentId(null); setEditingCommentContent("") }} disabled={savingCommentEdit}>
-                                  Cancel
-                                </Button>
-                                <Button size="sm" onClick={handleSaveEditComment} disabled={savingCommentEdit || !editingCommentContent.replace(/<[^>]*>/g, "").trim()}>
-                                  {savingCommentEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Check className="h-3.5 w-3.5 mr-1" />}
-                                  Save
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="relative">
-                              <div className="bg-muted/50 rounded-lg px-3 py-2">
-                                <LinkPreviewHover apiKey={getEddyterApiKey()} enabled={true}>
-                                  <div
-                                    className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                                    dangerouslySetInnerHTML={{ __html: comment.content }}
-                                  />
-                                </LinkPreviewHover>
-                              </div>
-                              {isOwn && (
-                                <div className="flex items-center gap-1 mt-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                                    onClick={() => handleStartEditComment(comment)}
-                                  >
-                                    <Pencil className="h-3 w-3 mr-1" /> Edit
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
-                                    onClick={() => handleDeleteComment(comment.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3 mr-1" /> Delete
-                                  </Button>
-                                </div>
+                    <div key={`comment-${comment.id}`} className="relative pb-8 last:pb-0 group/comment">
+                      {/* Timeline dot */}
+                      <div className="absolute left-0 -translate-x-1/2 top-1 w-2.5 h-2.5 rounded-full bg-muted-foreground/40 ring-4 ring-muted/60 shrink-0" aria-hidden />
+
+                      <div className="ml-4">
+                        {/* Timestamp */}
+                        <span className="text-xs text-muted-foreground bg-muted/60 px-2.5 py-0.5 rounded-full whitespace-nowrap inline-block mb-2">
+                          {formatDate(comment.createdAt)}
+                        </span>
+
+                        <div className="flex gap-3">
+                          <Avatar className="h-8 w-8 shrink-0 mt-0.5">
+                            {comment.author.image ? <AvatarImage src={comment.author.image} /> : null}
+                            <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                              {getInitials(comment.author.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2 mb-0.5">
+                              <span className="text-sm font-medium truncate">{comment.author.name}</span>
+                              {comment.createdAt !== comment.updatedAt && (
+                                <span className="text-xs text-muted-foreground/60 italic">(edited)</span>
                               )}
                             </div>
-                          )}
+                            {isEditing ? (
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium">Edit comment</span>
+                                </div>
+                                <div className="rounded-lg border overflow-hidden bg-background [&_.eddyter-container]:!max-w-full [&_.ProseMirror]:!max-w-full">
+                                  <EddyterWrapper
+                                    onChange={setEditingCommentContent}
+                                    placeholder="Edit your comment..."
+                                    initialContent={comment.content}
+                                    key={`edit-comment-${comment.id}`}
+                                    showLoadTime={false}
+                                  />
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <Button size="sm" variant="ghost" onClick={() => { setEditingCommentId(null); setEditingCommentContent("") }} disabled={savingCommentEdit}>
+                                    Cancel
+                                  </Button>
+                                  <Button size="sm" onClick={handleSaveEditComment} disabled={savingCommentEdit || !editingCommentContent.replace(/<[^>]*>/g, "").trim()}>
+                                    {savingCommentEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Check className="h-3.5 w-3.5 mr-1" />}
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <div className="bg-muted/50 rounded-lg px-4 py-2.5 border-l-2 border-primary/20">
+                                  <LinkPreviewHover apiKey={getEddyterApiKey()} enabled={true}>
+                                    <div
+                                      className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
+                                      dangerouslySetInnerHTML={{ __html: comment.content }}
+                                    />
+                                  </LinkPreviewHover>
+                                </div>
+                                {isOwn && (
+                                  <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                      onClick={() => handleStartEditComment(comment)}
+                                    >
+                                      <Pencil className="h-3 w-3 mr-1" /> Edit
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                                      onClick={() => handleDeleteComment(comment.id)}
+                                    >
+                                      <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
