@@ -125,6 +125,11 @@ interface CommentActivity {
 
 type ActivityItem = FileGroupActivity | CommentActivity
 
+/** Single item for unified chronological timeline (files + comments interleaved by time) */
+type TimelineEntry =
+  | { type: "file"; file: MediaFileItem; timestamp: string }
+  | { type: "comment"; comment: ThreadComment; timestamp: string }
+
 interface Member {
   id: string
   name: string
@@ -552,6 +557,22 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
     if (f.post) postsInFiles.set(f.post.id, f.post)
   }
 
+  // Flatten activities into a single chronological list (files + comments) for vertical timeline
+  const flattenedTimelineItems = React.useMemo((): TimelineEntry[] => {
+    const items: TimelineEntry[] = []
+    for (const activity of activities) {
+      if (activity.type === "file-group") {
+        for (const file of activity.files) {
+          items.push({ type: "file", file, timestamp: file.createdAt })
+        }
+      } else {
+        items.push({ type: "comment", comment: activity.comment, timestamp: activity.comment.createdAt })
+      }
+    }
+    items.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    return items
+  }, [activities])
+
   // ─── Auth guard / invalid date ──────────────────────────────
 
   if (status === "loading") {
@@ -752,13 +773,189 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
             </p>
           </div>
         ) : (
-          /* ─── Activity Timeline ──────────────────────── */
+          /* ─── Activity: unified timeline (files + comments by time) or grouped cards/grid ─── */
           <div className="space-y-6">
-            {activities.map((activity, idx) => {
+            {fileViewMode === "timeline" ? (
+              <div className="relative pl-8 ml-1">
+                <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-border rounded-full" aria-hidden />
+                {flattenedTimelineItems.map((entry) => {
+                  if (entry.type === "file") {
+                    const file = entry.file
+                    const isImage = file.mimeType.startsWith("image/")
+                    const isVideo = file.mimeType.startsWith("video/")
+                    const FileIcon = getFileIcon(file.mimeType)
+                    return (
+                      <div key={`file-${file.id}`} className="relative flex gap-4 items-start pb-6 last:pb-0">
+                        <div className="absolute left-0 w-3 h-3 rounded-full bg-primary border-2 border-background -translate-x-1/2 top-3 shrink-0" aria-hidden />
+                        <span className="text-xs text-muted-foreground w-32 shrink-0 pt-2.5 whitespace-nowrap">
+                          {formatDate(file.createdAt)}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <Card className="overflow-hidden group hover:shadow-md transition-shadow">
+                            <div className="flex">
+                              <div
+                                className="w-20 h-20 shrink-0 bg-muted flex items-center justify-center cursor-pointer overflow-hidden"
+                                onClick={() => setPreviewFile(file)}
+                              >
+                                {isImage && file.url ? (
+                                  <img src={file.url} alt={file.fileName} className="h-full w-full object-cover" />
+                                ) : isVideo ? (
+                                  <Film className="h-6 w-6 text-muted-foreground" />
+                                ) : (
+                                  <FileIcon className="h-6 w-6 text-muted-foreground" />
+                                )}
+                              </div>
+                              <CardContent className="p-3 flex-1 min-w-0 flex flex-col justify-center">
+                                <p className="text-sm font-medium truncate" title={file.fileName}>
+                                  {file.fileName}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+                                  {file._count && file._count.shares > 0 && (
+                                    <Badge variant="secondary" className="text-[10px] h-5">
+                                      <Users className="h-2.5 w-2.5 mr-0.5" />
+                                      {file._count.shares}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 mt-2">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPreviewFile(file)}>
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(file)}>
+                                    <Download className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openShareDialog(file)}>
+                                    <Share2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                                        <MoreVertical className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => setPreviewFile(file)}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Preview
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleDownload(file)}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Download
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openShareDialog(file)}>
+                                        <Share2 className="mr-2 h-4 w-4" />
+                                        Share
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => setDeleteFileState(file)}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </CardContent>
+                            </div>
+                          </Card>
+                        </div>
+                      </div>
+                    )
+                  }
+                  const comment = entry.comment
+                  const isOwn = comment.authorId === currentUserId
+                  const isEditing = editingCommentId === comment.id
+                  return (
+                    <div key={`comment-${comment.id}`} className="relative flex gap-4 items-start pb-6 last:pb-0 group/comment">
+                      <div className="absolute left-0 w-3 h-3 rounded-full bg-primary border-2 border-background -translate-x-1/2 top-3 shrink-0" aria-hidden />
+                      <span className="text-xs text-muted-foreground w-32 shrink-0 pt-2.5 whitespace-nowrap">
+                        {formatDate(comment.createdAt)}
+                      </span>
+                      <div className="flex-1 min-w-0 flex gap-3">
+                        <Avatar className="h-8 w-8 shrink-0 mt-0.5">
+                          {comment.author.image ? <AvatarImage src={comment.author.image} /> : null}
+                          <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                            {getInitials(comment.author.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2 mb-0.5">
+                            <span className="text-sm font-medium truncate">{comment.author.name}</span>
+                            {comment.createdAt !== comment.updatedAt && (
+                              <span className="text-xs text-muted-foreground/60 italic">(edited)</span>
+                            )}
+                          </div>
+                          {isEditing ? (
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Pencil className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">Edit comment</span>
+                              </div>
+                              <div className="rounded-lg border overflow-hidden bg-background [&_.eddyter-container]:!max-w-full [&_.ProseMirror]:!max-w-full">
+                                <EddyterWrapper
+                                  onChange={setEditingCommentContent}
+                                  placeholder="Edit your comment..."
+                                  initialContent={comment.content}
+                                  key={`edit-comment-${comment.id}`}
+                                  showLoadTime={false}
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button size="sm" variant="ghost" onClick={() => { setEditingCommentId(null); setEditingCommentContent("") }} disabled={savingCommentEdit}>
+                                  Cancel
+                                </Button>
+                                <Button size="sm" onClick={handleSaveEditComment} disabled={savingCommentEdit || !editingCommentContent.replace(/<[^>]*>/g, "").trim()}>
+                                  {savingCommentEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Check className="h-3.5 w-3.5 mr-1" />}
+                                  Save
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <div className="bg-muted/50 rounded-lg px-3 py-2">
+                                <LinkPreviewHover apiKey={getEddyterApiKey()} enabled={true}>
+                                  <div
+                                    className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
+                                    dangerouslySetInnerHTML={{ __html: comment.content }}
+                                  />
+                                </LinkPreviewHover>
+                              </div>
+                              {isOwn && (
+                                <div className="flex items-center gap-1 mt-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                    onClick={() => handleStartEditComment(comment)}
+                                  >
+                                    <Pencil className="h-3 w-3 mr-1" /> Edit
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+            activities.map((activity, idx) => {
               if (activity.type === "file-group") {
                 return (
                   <div key={`fg-${activity.date}-${idx}`} className="space-y-3">
-                    {/* Date sub-header */}
                     <div className="flex items-center gap-2">
                       <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
                         <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
@@ -770,100 +967,7 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
                         {activity.files.length} {activity.files.length === 1 ? "file" : "files"}
                       </Badge>
                     </div>
-
-                    {/* File display — timeline, card view, or compact grid */}
-                    {fileViewMode === "timeline" ? (
-                      <div className="relative pl-8 ml-1">
-                        <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-border rounded-full" aria-hidden />
-                        {[...activity.files]
-                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                          .map((file) => {
-                          const isImage = file.mimeType.startsWith("image/")
-                          const isVideo = file.mimeType.startsWith("video/")
-                          const FileIcon = getFileIcon(file.mimeType)
-                          return (
-                            <div key={file.id} className="relative flex gap-4 items-start pb-6 last:pb-0">
-                              <div className="absolute left-0 w-3 h-3 rounded-full bg-primary border-2 border-background -translate-x-1/2 top-3 shrink-0" aria-hidden />
-                              <span className="text-xs text-muted-foreground w-32 shrink-0 pt-2.5 whitespace-nowrap">
-                                {formatDate(file.createdAt)}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <Card className="overflow-hidden group hover:shadow-md transition-shadow">
-                                  <div className="flex">
-                                    <div
-                                      className="w-20 h-20 shrink-0 bg-muted flex items-center justify-center cursor-pointer overflow-hidden"
-                                      onClick={() => setPreviewFile(file)}
-                                    >
-                                      {isImage && file.url ? (
-                                        <img src={file.url} alt={file.fileName} className="h-full w-full object-cover" />
-                                      ) : isVideo ? (
-                                        <Film className="h-6 w-6 text-muted-foreground" />
-                                      ) : (
-                                        <FileIcon className="h-6 w-6 text-muted-foreground" />
-                                      )}
-                                    </div>
-                                    <CardContent className="p-3 flex-1 min-w-0 flex flex-col justify-center">
-                                      <p className="text-sm font-medium truncate" title={file.fileName}>
-                                        {file.fileName}
-                                      </p>
-                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                        <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span>
-                                        {file._count && file._count.shares > 0 && (
-                                          <Badge variant="secondary" className="text-[10px] h-5">
-                                            <Users className="h-2.5 w-2.5 mr-0.5" />
-                                            {file._count.shares}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-1 mt-2">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPreviewFile(file)}>
-                                          <Eye className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(file)}>
-                                          <Download className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openShareDialog(file)}>
-                                          <Share2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                                              <MoreVertical className="h-3.5 w-3.5" />
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => setPreviewFile(file)}>
-                                              <Eye className="mr-2 h-4 w-4" />
-                                              Preview
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDownload(file)}>
-                                              <Download className="mr-2 h-4 w-4" />
-                                              Download
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => openShareDialog(file)}>
-                                              <Share2 className="mr-2 h-4 w-4" />
-                                              Share
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem
-                                              onClick={() => setDeleteFileState(file)}
-                                              className="text-destructive focus:text-destructive"
-                                            >
-                                              <Trash2 className="mr-2 h-4 w-4" />
-                                              Delete
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                      </div>
-                                    </CardContent>
-                                  </div>
-                                </Card>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ) : fileViewMode === "cards" ? (
+                    {fileViewMode === "cards" ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pl-9">
                         {activity.files.map((file) => {
                           const isImage = file.mimeType.startsWith("image/")
@@ -1096,6 +1200,7 @@ export default function FilesThreadPage({ params }: { params: Promise<{ date: st
             })}
 
             <div ref={activityEndRef} />
+            )}
           </div>
         )}
 
