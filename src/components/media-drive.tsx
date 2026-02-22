@@ -1114,9 +1114,9 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
 
                   // ── Standalone files (no post) ──
                   return (
-                    <div key={`standalone-${groupIndex}`}>
+                    <div key={`standalone-${groupIndex}`} className="rounded-xl border border-border/60 bg-card overflow-hidden">
                       {/* Standalone header */}
-                      <div className="flex items-center gap-3 mb-3">
+                      <div className="flex items-center gap-3 px-4 py-3 bg-muted/30 border-b border-border/40">
                         <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
                           <HardDrive className="h-4 w-4 text-muted-foreground" />
                         </div>
@@ -1138,8 +1138,10 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
                       </div>
 
                       {/* Standalone files grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 ml-11">
-                        {group.files.map((file) => renderFileCard(file))}
+                      <div className="p-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                          {group.files.map((file) => renderFileCard(file))}
+                        </div>
                       </div>
                     </div>
                   )
@@ -1241,12 +1243,12 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
             ) : viewMode === "grid" ? (
               <div className="space-y-6">
                 {groupFilesByPost(displayFiles).map((group, groupIndex) => (
-                  <div key={group.type === "post" && group.post ? `post-${group.post.id}` : `standalone-${groupIndex}`}>
+                  <div key={group.type === "post" && group.post ? `post-${group.post.id}` : `standalone-${groupIndex}`} className="rounded-xl border border-border/60 bg-card overflow-hidden">
                     {/* Post context header for grid view */}
                     {group.type === "post" && group.post && (
                       <Link
                         href={`/post/${group.post.id}`}
-                        className="flex items-center gap-2.5 mb-3 px-3 py-2 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors group/header"
+                        className="flex items-center gap-2.5 px-4 py-3 bg-muted/30 border-b border-border/40 hover:bg-muted/50 transition-colors group/header"
                       >
                         <MessageSquare className="h-4 w-4 text-primary shrink-0" />
                         <p className="text-sm font-medium text-foreground truncate flex-1 group-hover/header:text-primary transition-colors">
@@ -1260,13 +1262,15 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
                       </Link>
                     )}
                     {group.type === "standalone" && (
-                      <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b border-border/40 text-xs text-muted-foreground">
                         <HardDrive className="h-3.5 w-3.5" />
                         <span>Standalone files · Not attached to any post</span>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                      {group.files.map((file) => renderFileCard(file))}
+                    <div className="p-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {group.files.map((file) => renderFileCard(file))}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1274,12 +1278,12 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
             ) : (
               <div className="space-y-6">
                 {groupFilesByPost(displayFiles).map((group, groupIndex) => (
-                  <div key={group.type === "post" && group.post ? `post-${group.post.id}` : `standalone-${groupIndex}`}>
+                  <div key={group.type === "post" && group.post ? `post-${group.post.id}` : `standalone-${groupIndex}`} className="rounded-xl border border-border/60 bg-card overflow-hidden">
                     {/* Post context header for list view */}
                     {group.type === "post" && group.post && (
                       <Link
                         href={`/post/${group.post.id}`}
-                        className="flex items-center gap-2.5 mb-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors group/header"
+                        className="flex items-center gap-2.5 px-4 py-3 bg-muted/30 border-b border-border/40 hover:bg-muted/50 transition-colors group/header"
                       >
                         <MessageSquare className="h-4 w-4 text-primary shrink-0" />
                         <p className="text-sm font-medium text-foreground truncate flex-1 group-hover/header:text-primary transition-colors">
@@ -1293,12 +1297,12 @@ export function MediaDrive({ currentUserId }: MediaDriveProps) {
                       </Link>
                     )}
                     {group.type === "standalone" && (
-                      <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b border-border/40 text-xs text-muted-foreground">
                         <HardDrive className="h-3.5 w-3.5" />
                         <span>Standalone files</span>
                       </div>
                     )}
-                    <div className="space-y-2">
+                    <div className="p-3 space-y-2">
                       {group.files.map((file) => renderFileCard(file))}
                     </div>
                   </div>
