@@ -136,11 +136,11 @@
 .ct-editor-container {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow: visible; /* allow AI menu and other dropdowns to be fully visible */
   background: var(--card);
 }
 
-/* Force Eddyter editor to full width */
+/* Force Eddyter editor to full width and allow menus (e.g. AI menu) to be fully visible */
 .eddyter-container,
 .eddyter-container > *,
 .eddyter-container [id^="ct-editor-"],
@@ -152,6 +152,13 @@
   width: 100% !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
+}
+
+/* Allow dropdowns/popovers (AI menu, etc.) to extend outside the editor and stay visible */
+.eddyter-container {
+  overflow: visible !important;
+  position: relative;
+  z-index: 1;
 }
 
 /* Target the editor toolbar and content area */

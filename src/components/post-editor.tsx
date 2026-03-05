@@ -376,7 +376,7 @@ export function PostEditor({ onPost, folders = [], defaultFolderId, lockFolder =
         />
 
         {/* Content Editor */}
-        <div className="rounded-lg border border-border/50 bg-muted/20 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring/50 focus-within:ring-offset-0 transition-shadow w-full" style={{ width: '100%' }}>
+        <div className="rounded-lg border border-border/50 bg-muted/20 dark:bg-muted/10 overflow-visible focus-within:ring-2 focus-within:ring-ring/50 focus-within:ring-offset-0 transition-shadow w-full" style={{ width: '100%' }}>
           {!mentionListReady ? (
             <div className="h-[140px] flex items-center justify-center text-muted-foreground bg-muted/30">
               <Loader2 className="h-5 w-5 animate-spin" />

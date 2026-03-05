@@ -1146,7 +1146,7 @@ export function Timeline({
                                             <Pencil className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-sm font-medium text-foreground">Edit comment</span>
                                           </div>
-                                          <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
+                                          <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-visible focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
                                             <EddyterWrapper
                                               onChange={(html) => setEditingCommentContent(html)}
                                               placeholder="Edit your comment..."
@@ -1262,7 +1262,7 @@ export function Timeline({
                               <MessageSquare className="h-4 w-4 text-muted-foreground" />
                               <span className="text-sm font-medium text-foreground">Add a comment</span>
                             </div>
-                            <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
+                            <div className="rounded-lg border bg-muted/30 dark:bg-muted/10 overflow-visible focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
                               <EddyterWrapper
                                 onChange={(html) => setCommentInputs(prev => ({ ...prev, [post.id]: html }))}
                                 placeholder="Write a comment..."
