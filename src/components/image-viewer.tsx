@@ -124,13 +124,20 @@ export function ClickableContent({ html, className }: ClickableContentProps) {
       }
     }
 
-    // Add click handler to all images
     container.addEventListener('click', handleClick)
 
-    // Add cursor pointer style to images
+    // Make images look clickable
     const images = container.querySelectorAll('img')
     images.forEach((img) => {
       img.style.cursor = 'pointer'
+    })
+
+    // Make links open in new tab (files, external links, etc.)
+    const links = container.querySelectorAll('a[href]')
+    links.forEach((a) => {
+      const anchor = a as HTMLAnchorElement
+      anchor.setAttribute('target', '_blank')
+      anchor.setAttribute('rel', 'noopener noreferrer')
     })
 
     return () => {

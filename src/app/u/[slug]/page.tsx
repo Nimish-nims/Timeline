@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Calendar, FileText, Lock, ArrowLeft, User, MessageSquare, ChevronDown, ChevronUp } from "lucide-react"
 import { LinkPreviewHover } from "eddyter"
 import { getEddyterApiKey } from "@/lib/eddyter-key"
+import { ClickableContent } from "@/components/image-viewer"
 
 interface Comment {
   id: string
@@ -258,9 +259,9 @@ export default function PublicTimelinePage() {
                     apiKey={getEddyterApiKey()}
                     enabled={true}
                   >
-                    <div
+                    <ClickableContent
+                      html={post.content}
                       className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                      dangerouslySetInnerHTML={{ __html: post.content }}
                     />
                   </LinkPreviewHover>
                 </CardContent>
@@ -317,9 +318,9 @@ export default function PublicTimelinePage() {
                                   apiKey={getEddyterApiKey()}
                                   enabled={true}
                                 >
-                                  <div
+                                  <ClickableContent
+                                    html={comment.content}
                                     className="prose prose-sm dark:prose-invert max-w-none mt-0.5 [&>p]:mb-1 [&>p:last-child]:mb-0"
-                                    dangerouslySetInnerHTML={{ __html: comment.content }}
                                   />
                                 </LinkPreviewHover>
                                 <p className="text-xs text-muted-foreground mt-1.5">

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { LinkPreviewHover } from 'eddyter'
 import { getEddyterApiKey } from '@/lib/eddyter-key'
+import { ClickableContent } from '@/components/image-viewer'
 
 interface Tag {
   id: string
@@ -324,9 +325,9 @@ export function SharedWithMe({ currentUserId }: SharedWithMeProps) {
                 apiKey={getEddyterApiKey()}
                 enabled={true}
               >
-                <div
+                <ClickableContent
+                  html={post.content}
                   className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                  dangerouslySetInnerHTML={{ __html: post.content }}
                 />
               </LinkPreviewHover>
 

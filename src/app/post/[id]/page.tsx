@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/dialog'
 import { LinkPreviewHover } from 'eddyter'
 import { getEddyterApiKey } from '@/lib/eddyter-key'
+import { ClickableContent } from '@/components/image-viewer'
 
 const EddyterWrapper = dynamic(() => import('@/components/eddyter-wrapper'), {
   ssr: false,
@@ -520,9 +521,9 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                         apiKey={getEddyterApiKey()}
                         enabled={true}
                       >
-                        <div
+                        <ClickableContent
+                          html={post.content}
                           className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                          dangerouslySetInnerHTML={{ __html: post.content }}
                         />
                       </LinkPreviewHover>
                       {/* Attachments Display */}
@@ -718,9 +719,9 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                                     apiKey={getEddyterApiKey()}
                                     enabled={true}
                                   >
-                                    <div
+                                    <ClickableContent
+                                      html={comment.content}
                                       className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                                      dangerouslySetInnerHTML={{ __html: comment.content }}
                                     />
                                   </LinkPreviewHover>
                                 </div>

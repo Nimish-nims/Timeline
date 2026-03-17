@@ -3,9 +3,9 @@
  * and production key for all other origins (LAN IP, deployed host, etc.).
  */
 const EDDYTER_KEY_LOCALHOST =
-  'eddyt_ykh2O1sDA3imtPR6JmFPU8rRtVS6ox1SbD5ZSw3drG40F0EiZiJyu88ZZXAvLc8OnwRk6BIV6tEw9z7NDab4vqFQGD'
+  'eddyt_T0fqjed5hfyKVbvrXoL7X6KrYKB72EFhGZOQb39l6QACJYSY6hECmyXR7Gn7MZHhpKZadicS7IT8AFLeRLsrHjjHQH'
 const EDDYTER_KEY_PRODUCTION =
-  'eddyt_G5kIEFdUbyoy419G2wTRKURNnETqnK033MAPq43K8tsKpazKg2CeGhMlyXtl6Wx2cij5TujjaUZWMYKZj67NCPQSzF'
+  'eddyt_T0fqjed5hfyKVbvrXoL7X6KrYKB72EFhGZOQb39l6QACJYSY6hECmyXR7Gn7MZHhpKZadicS7IT8AFLeRLsrHjjHQH'
 
 function isLocalhostOrigin(): boolean {
   if (typeof window === 'undefined') return process.env.NODE_ENV === 'development'

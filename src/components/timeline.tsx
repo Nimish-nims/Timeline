@@ -28,6 +28,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { LinkPreviewHover } from 'eddyter'
 import { addLazyLoadingToImages } from '@/lib/lazy-images'
 import { getEddyterApiKey } from '@/lib/eddyter-key'
+import { ClickableContent } from '@/components/image-viewer'
 
 const EddyterWrapper = dynamic(() => import('./eddyter-wrapper'), {
   ssr: false,
@@ -912,9 +913,9 @@ export function Timeline({
                         apiKey={getEddyterApiKey()}
                         enabled={true}
                       >
-                        <div
+                        <ClickableContent
+                          html={addLazyLoadingToImages(post.content)}
                           className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                          dangerouslySetInnerHTML={{ __html: addLazyLoadingToImages(post.content) }}
                         />
                       </LinkPreviewHover>
                       {/* Attachments Display */}
@@ -1196,9 +1197,9 @@ export function Timeline({
                                               apiKey={getEddyterApiKey()}
                                               enabled={true}
                                             >
-                                              <div
+                                              <ClickableContent
+                                                html={addLazyLoadingToImages(comment.content)}
                                                 className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0"
-                                                dangerouslySetInnerHTML={{ __html: addLazyLoadingToImages(comment.content) }}
                                               />
                                             </LinkPreviewHover>
                                           </div>

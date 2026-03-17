@@ -29,6 +29,7 @@ import {
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LinkPreviewHover } from 'eddyter'
 import { getEddyterApiKey } from '@/lib/eddyter-key'
+import { ClickableContent } from '@/components/image-viewer'
 import {
   Dialog,
   DialogContent,
@@ -472,9 +473,9 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                           apiKey={getEddyterApiKey()}
                           enabled={true}
                         >
-                          <div
+                          <ClickableContent
+                            html={post.content}
                             className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0 line-clamp-4"
-                            dangerouslySetInnerHTML={{ __html: post.content }}
                           />
                         </LinkPreviewHover>
 
