@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { PostEditor } from '@/components/post-editor'
 import { Timeline } from '@/components/timeline'
@@ -116,6 +117,74 @@ interface MemberPost {
   _count?: { comments: number }
 }
 
+function PublicLanding() {
+  const [slug, setSlug] = useState('')
+  const cleaned = slug.trim().replace(/^\/?u\//, '')
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto flex h-14 sm:h-16 max-w-[90rem] items-center justify-between gap-2 px-4 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-primary flex items-center justify-center shadow-sm shrink-0">
+              <span className="text-primary-foreground font-bold text-sm sm:text-base">T</span>
+            </div>
+            <span className="text-xl font-bold tracking-tight">Timeline</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link href="/login">
+              <Button size="sm">Sign in</Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto max-w-3xl px-4 sm:px-6 py-10 sm:py-14">
+        <div className="rounded-2xl border bg-background/70 backdrop-blur p-6 sm:p-10 shadow-sm">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Welcome to Timeline</h1>
+          <p className="text-muted-foreground mt-2">
+            You can browse a public timeline link without signing in, or sign in to view your private workspace.
+          </p>
+
+          <div className="mt-8 grid gap-6">
+            <div className="grid gap-2">
+              <Label htmlFor="public-slug">Open a public timeline</Label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  id="public-slug"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="Paste a public link or enter slug (e.g. /u/john)"
+                />
+                <Link href={cleaned ? `/u/${encodeURIComponent(cleaned)}` : '#'} aria-disabled={!cleaned}>
+                  <Button className="w-full sm:w-auto" disabled={!cleaned} variant="outline">
+                    View
+                  </Button>
+                </Link>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Public timelines are enabled by the owner from inside the app.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Link href="/login" className="w-full sm:w-auto">
+                <Button className="w-full">Sign in</Button>
+              </Link>
+              <Link href="/login" className="w-full sm:w-auto">
+                <Button className="w-full" variant="secondary">
+                  Create / manage my timeline
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 export default function Home() {
   const { data: session, status, update: updateSession } = useSession()
   const router = useRouter()
@@ -226,12 +295,6 @@ export default function Home() {
     setSelectedMember(null)
     setMemberPosts({ sharedWithThem: [], sharedWithMe: [] })
   }
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login')
-    }
-  }, [status, router])
 
   useEffect(() => {
     if (session) {
@@ -588,12 +651,16 @@ export default function Home() {
       .slice(0, 2)
   }
 
-  if (status === 'loading' || status === 'unauthenticated') {
+  if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
+  }
+
+  if (status === 'unauthenticated') {
+    return <PublicLanding />
   }
 
   const isAdmin = session?.user?.role === 'admin'
