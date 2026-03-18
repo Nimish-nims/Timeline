@@ -117,19 +117,103 @@ interface MemberPost {
   _count?: { comments: number }
 }
 
-function PublicLanding() {
-  const [slug, setSlug] = useState('')
-  const cleaned = slug.trim().replace(/^\/?u\//, '')
+function PublicTimelineHome() {
+  type PublicPostApiItem = {
+    id: string
+    title?: string | null
+    content: string
+    createdAt: string
+    updatedAt: string
+    author: { id: string; name: string; image?: string | null }
+    tags?: TagType[]
+    attachments?: Post['attachments']
+    _count?: { comments: number }
+  }
+
+  const [posts, setPosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+
+  const fetchPublicPosts = async (cursor?: string | null, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoading(true)
+
+    try {
+      const params = new URLSearchParams()
+      params.set('limit', '20')
+      if (cursor) params.set('cursor', cursor)
+      const res = await fetch(`/api/public/posts?${params.toString()}`)
+      const data = await res.json()
+
+      if (!res.ok) {
+        console.error('Public posts API error:', data.error || res.status)
+        if (!append) setPosts([])
+        return
+      }
+
+      const next: PublicPostApiItem[] = Array.isArray(data.posts) ? data.posts : []
+      const mapped: Post[] = next.map((post) => ({
+        id: post.id,
+        title: post.title ?? null,
+        content: post.content,
+        createdAt: post.createdAt,
+        updatedAt: post.updatedAt,
+        author: {
+          id: post.author.id,
+          name: post.author.name,
+          email: '',
+          image: post.author.image ?? null,
+        },
+        tags: post.tags ?? [],
+        attachments: post.attachments ?? [],
+        _count: post._count ?? { comments: 0 },
+      }))
+
+      setPosts(prev => (append ? [...prev, ...mapped] : mapped))
+      setNextCursor(data.nextCursor ?? null)
+      setHasMore(data.hasMore ?? false)
+    } catch (error) {
+      console.error('Failed to fetch public posts:', error)
+      if (!append) setPosts([])
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchPublicPosts()
+  }, [])
+
+  useEffect(() => {
+    if (!loadMoreRef.current || loading) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && nextCursor) {
+          fetchPublicPosts(nextCursor, true)
+        }
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    )
+
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loading, nextCursor])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-14 sm:h-16 max-w-[90rem] items-center justify-between gap-2 px-4 sm:px-6">
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-primary flex items-center justify-center shadow-sm shrink-0">
               <span className="text-primary-foreground font-bold text-sm sm:text-base">T</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">Timeline</span>
+            <span className="text-xl font-bold tracking-tight truncate">Timeline</span>
+            <Badge variant="secondary" className="ml-2 hidden sm:inline-flex">Public</Badge>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -140,46 +224,58 @@ function PublicLanding() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-3xl px-4 sm:px-6 py-10 sm:py-14">
-        <div className="rounded-2xl border bg-background/70 backdrop-blur p-6 sm:p-10 shadow-sm">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Welcome to Timeline</h1>
-          <p className="text-muted-foreground mt-2">
-            You can browse a public timeline link without signing in, or sign in to view your private workspace.
+      <main className="container mx-auto max-w-[90rem] px-4 sm:px-6 py-4 sm:py-8">
+        <div className="mb-5 sm:mb-7 rounded-xl border bg-background/60 backdrop-blur px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Viewing the public feed. Sign in to create posts, comment, and manage your timeline.
           </p>
-
-          <div className="mt-8 grid gap-6">
-            <div className="grid gap-2">
-              <Label htmlFor="public-slug">Open a public timeline</Label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  id="public-slug"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="Paste a public link or enter slug (e.g. /u/john)"
-                />
-                <Link href={cleaned ? `/u/${encodeURIComponent(cleaned)}` : '#'} aria-disabled={!cleaned}>
-                  <Button className="w-full sm:w-auto" disabled={!cleaned} variant="outline">
-                    View
-                  </Button>
-                </Link>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Public timelines are enabled by the owner from inside the app.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Link href="/login" className="w-full sm:w-auto">
-                <Button className="w-full">Sign in</Button>
-              </Link>
-              <Link href="/login" className="w-full sm:w-auto">
-                <Button className="w-full" variant="secondary">
-                  Create / manage my timeline
-                </Button>
-              </Link>
-            </div>
-          </div>
+          <Link href="/login" className="shrink-0">
+            <Button variant="outline" size="sm">Sign in</Button>
+          </Link>
         </div>
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground mt-3">Loading public posts...</p>
+          </div>
+        ) : (
+          <>
+            <Timeline
+              posts={posts.map(post => ({
+                id: post.id,
+                title: post.title,
+                content: post.content,
+                authorName: post.author.name,
+                authorId: post.author.id,
+                authorImage: post.author.image,
+                createdAt: new Date(post.createdAt),
+                updatedAt: new Date(post.updatedAt),
+                tags: post.tags,
+                attachments: post.attachments,
+                _count: post._count,
+              }))}
+              onDelete={() => {}}
+              onEdit={() => {}}
+              currentUserId={undefined}
+              isAdmin={false}
+            />
+
+            <div ref={loadMoreRef} className="py-10">
+              {loadingMore && (
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Loading more...</p>
+                </div>
+              )}
+              {!hasMore && posts.length > 0 && (
+                <p className="text-center text-sm text-muted-foreground">
+                  You&apos;ve reached the end
+                </p>
+              )}
+            </div>
+          </>
+        )}
       </main>
     </div>
   )
@@ -660,7 +756,7 @@ export default function Home() {
   }
 
   if (status === 'unauthenticated') {
-    return <PublicLanding />
+    return <PublicTimelineHome />
   }
 
   const isAdmin = session?.user?.role === 'admin'
